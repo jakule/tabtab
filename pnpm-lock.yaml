@@ -9,10 +9,10 @@ importers:
   .:
     devDependencies:
       '@types/chrome':
-        specifier: ^0.0.246
-        version: 0.0.246
+        specifier: ^0.0.307
+        version: 0.0.307
       typescript:
-        specifier: ^5.0.2
+        specifier: ^5.8.2
         version: 5.8.2
       vite:
         specifier: ^4.4.5
@@ -152,8 +152,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@types/chrome@0.0.246':
-    resolution: {integrity: sha512-MxGxEomGxsJiL9xe/7ZwVgwdn8XVKWbPvxpVQl3nWOjrS0Ce63JsfzxUc4aU3GvRcUPYsfufHmJ17BFyKxeA4g==}
+  '@types/chrome@0.0.307':
+    resolution: {integrity: sha512-IHqsTT+JT6vlFTcRWaih7saaEYhFCT13KRgRIRFKjXYOG3g0ummwXAGKtaxK9Zzz6yYsYvbEut91exTX0F/xSg==}
 
   '@types/filesystem@0.0.36':
     resolution: {integrity: sha512-vPDXOZuannb9FZdxgHnqSwAG/jvdGM8Wq+6N4D/d80z+D4HWH+bItqsZaVRQykAn6WEVeEkLm2oQigyHtgb0RA==}
@@ -296,7 +296,7 @@ snapshots:
   '@esbuild/win32-x64@0.18.20':
     optional: true
 
-  '@types/chrome@0.0.246':
+  '@types/chrome@0.0.307':
     dependencies:
       '@types/filesystem': 0.0.36
       '@types/har-format': 1.2.16
