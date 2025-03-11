@@ -26,11 +26,16 @@ beforeEach(() => {
 
   // Reset chrome API mocks
   jest.clearAllMocks();
-});
 
-// Import the popup module to test
-// This needs to be after the DOM setup to work correctly
-import '../popup.ts';
+  // Import the popup module after setting up the DOM
+  jest.isolateModules(() => {
+    require('../popup.ts');
+  });
+
+  // Simulate that the DOM has finished loading
+  document.dispatchEvent(new Event('DOMContentLoaded'));
+
+});
 
 describe('Popup', () => {
   // Mock data for testing

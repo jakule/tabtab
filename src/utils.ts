@@ -12,6 +12,7 @@ export function getHost(url: string): string {
     const urlObj = new URL(url);
     return urlObj.hostname;
   } catch (e) {
+    console.error(`Invalid URL: ${e}`);
     return "other";
   }
 }

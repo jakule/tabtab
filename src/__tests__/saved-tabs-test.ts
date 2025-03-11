@@ -55,13 +55,17 @@ beforeEach(() => {
     callback({ savedTabs: sampleTabs });
   });
 
-  // Reset other mocks
+  // Reset chrome API mocks
   jest.clearAllMocks();
-});
 
-// Import the saved-tabs module to test
-// This needs to be after the DOM setup to work correctly
-import '../saved-tabs.ts';
+  // Import the popup module after setting up the DOM
+  jest.isolateModules(() => {
+    require('../saved-tabs.ts');
+  });
+
+  // Simulate that the DOM has finished loading
+  document.dispatchEvent(new Event('DOMContentLoaded'));
+});
 
 describe('Saved Tabs', () => {
   test('should render tabs from storage on load', () => {
