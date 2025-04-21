@@ -27,9 +27,7 @@ const createChromeApiMock = () => {
 global.chrome = createChromeApiMock() as unknown as typeof chrome;
 
 // Add other global mocks if needed
-Object.defineProperty(window, 'URL', {
-  value: {
-    createObjectURL: jest.fn(),
-    revokeObjectURL: jest.fn(),
-  },
-});
+// @ts-ignore: allow mocking URL static methods
+window.URL.createObjectURL = jest.fn();
+// @ts-ignore: allow mocking URL static methods
+window.URL.revokeObjectURL = jest.fn();
