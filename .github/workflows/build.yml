@@ -1,0 +1,54 @@
+# .github/workflows/build-chrome-extension.yml
+name: Build Chrome Extension
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Check out the repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Setup pnpm - this uses the official pnpm action
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest # You can specify a specific version if needed
+
+      # Setup Node.js with pnpm caching
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22' # Use your preferred Node.js version
+          cache: 'pnpm'
+
+      # Install dependencies
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Build the extension
+      - name: Build extension
+        run: pnpm run build # Adjust this to match your build script
+
+      # Package the extension into a zip file
+      - name: Package extension
+        run: |
+          cd dist
+          zip -r ../chrome-extension-${{ github.sha }}.zip *
+
+      # Upload the packaged extension as an artifact
+      - name: Upload extension artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: chrome-extension-${{ github.sha }}
+          path: chrome-extension-${{ github.sha }}.zip
+          retention-days: 30 # How long to keep the artifact

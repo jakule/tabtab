@@ -49,12 +49,3 @@ jobs:
       
     - name: Test
       run: pnpm test
-      
-    - name: Build
-      run: pnpm build
-      
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: extension-build
-        path: dist/
