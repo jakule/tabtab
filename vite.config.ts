@@ -1,58 +1,31 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
-import fs from 'fs';
+import { copyFileSync, mkdirSync, existsSync } from 'fs';
 
-// Plugin to copy and process assets to dist
-const copyAssetsPlugin = (buildMode: string) => {
+// Plugin to copy manifest and other assets to dist
+const copyManifestPlugin = () => {
   return {
-    name: 'copy-assets-plugin',
+    name: 'copy-manifest',
     writeBundle: async () => {
-      const distDir = 'dist';
-
-      // Create dist directory if it doesn't exist
-      if (!fs.existsSync(distDir)) {
-        fs.mkdirSync(distDir, { recursive: true });
-      }
-
       // Make sure the icons directory exists
-      const iconDir = resolve(__dirname, `${distDir}/icons`);
-      if (!fs.existsSync(iconDir)) {
-        fs.mkdirSync(iconDir, { recursive: true });
+      const iconDir = resolve(__dirname, 'dist/icons');
+      if (!existsSync(iconDir)) {
+        mkdirSync(iconDir, { recursive: true });
       }
-
-      // Process manifest.json for the appropriate build mode
-      const manifestPath = resolve(__dirname, 'src/manifest.json');
-      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-
-      if (buildMode === 'debug') {
-        // Modify manifest for debug build
-        manifest.name = `${manifest.name} (Debug)`;
-        manifest.description = `${manifest.description} [DEBUG BUILD]`;
-      }
-
-      // Write the processed manifest
-      fs.writeFileSync(
-        resolve(__dirname, `${distDir}/manifest.json`),
-        JSON.stringify(manifest, null, 2)
+      
+      // Copy manifest.json
+      copyFileSync(
+        resolve(__dirname, 'src/manifest.json'),
+        resolve(__dirname, 'dist/manifest.json')
       );
-
-      // Copy saved-tabs HTML file to dist
-      try {
-        fs.copyFileSync(
-          resolve(__dirname, 'src/saved-tabs.html'),
-          resolve(__dirname, `${distDir}/saved-tabs.html`)
-        );
-      } catch (e) {
-        console.warn('Warning: Could not copy saved-tabs.html');
-      }
-
-      // Copy icon files - assuming they exist in images/icons
+      
+      // Copy icon files - assuming they exist in src/icons
       const iconSizes = [16, 48, 128];
       iconSizes.forEach(size => {
         try {
-          fs.copyFileSync(
+          copyFileSync(
             resolve(__dirname, `images/icon${size}.png`),
-            resolve(__dirname, `${distDir}/icons/icon${size}.png`)
+            resolve(__dirname, `dist/icons/icon${size}.png`)
           );
         } catch (e) {
           console.warn(`Warning: Could not copy icon${size}.png`);
@@ -62,40 +35,25 @@ const copyAssetsPlugin = (buildMode: string) => {
   };
 };
 
-// https://vitejs.dev/config/
-export default defineConfig(({ mode }) => {
-  const buildMode = mode === 'debug' ? 'debug' : 'release';
-  const isDebug = buildMode === 'debug';
-
-  console.log(`Building for ${buildMode} mode`);
-
-  const outDir = 'dist';
-
-  return {
-    plugins: [copyAssetsPlugin(buildMode)],
-    build: {
-      rollupOptions: {
-        input: {
-          popup: resolve(__dirname, 'src/popup/popup.html'),
-          'saved-tabs': resolve(__dirname, 'src/saved-tabs.ts')
-        },
-        output: {
-          entryFileNames: (chunkInfo) => {
-            // For saved-tabs.js, output directly to dist root
-            if (chunkInfo.name === 'saved-tabs') {
-              return '[name].js';
-            }
-            // For popup, maintain the folder structure
-            return 'popup/[name].js';
-          }
-        }
+export default defineConfig({
+  plugins: [copyManifestPlugin()],
+  build: {
+    outDir: 'dist',
+    emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        popup: resolve(__dirname, 'src/popup/popup.html'),
+        'saved-tabs': resolve(__dirname, 'src/saved-tabs.ts')
+        // Add other entry points as needed
       },
-      outDir,
-      emptyOutDir: true,
-
-      // Debug specific settings
-      minify: !isDebug,     // Minify only for release build
-      sourcemap: isDebug    // Generate sourcemaps only for debug build
+      output: {
+        entryFileNames: '[name].js',
+        chunkFileNames: '[name].js',
+        assetFileNames: '[name].[ext]'
+      }
     }
-  };
+  },
+  server: {
+    port: 3000
+  }
 });
