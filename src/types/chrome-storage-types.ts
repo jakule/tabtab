@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-namespace */
 declare namespace chrome.storage {
   interface StorageChange {
     oldValue?: any;

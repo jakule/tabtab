@@ -60,6 +60,7 @@ beforeEach(() => {
 
   // Import the popup module after setting up the DOM
   jest.isolateModules(() => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     require('../saved-tabs.ts');
   });
 
