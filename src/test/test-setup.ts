@@ -1,5 +1,5 @@
 // Mock Chrome API
-const createChromeApiMock = () => {
+const createChromeApiMock = (): Record<string, unknown> => {
   return {
     tabs: {
       query: jest.fn(),

@@ -257,7 +257,7 @@ describe('Saved Tabs', () => {
   test('importTabs should assign a unique groupId to imported tabs', () => {
     // Mock FileReader and its onload event
     const mockFileReader = {
-      readAsText: jest.fn().mockImplementation((file) => {
+      readAsText: jest.fn().mockImplementation((_file) => {
         // Simulate reading the file
         setTimeout(() => {
           if (mockFileReader.onload) {

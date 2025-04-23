@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-namespace */
 declare namespace chrome.storage {
   interface StorageChange {
-    oldValue?: any;
-    newValue?: any;
+    oldValue?: unknown;
+    newValue?: unknown;
   }
 
   interface StorageChanges {
@@ -11,25 +11,25 @@ declare namespace chrome.storage {
 
   interface StorageArea {
     get(
-      keys?: string | string[] | Record<string, any> | null,
-      callback?: (items: Record<string, any>) => void
+      keys?: string | string[] | Record<string, unknown> | null,
+      callback?: (items: Record<string, unknown>) => void
     ): void;
-    
+
     getBytesInUse(
       keys: string | string[] | null,
       callback?: (bytesInUse: number) => void
     ): void;
-    
+
     set(
-      items: Record<string, any>,
+      items: Record<string, unknown>,
       callback?: () => void
     ): void;
-    
+
     remove(
       keys: string | string[],
       callback?: () => void
     ): void;
-    
+
     clear(callback?: () => void): void;
   }
 

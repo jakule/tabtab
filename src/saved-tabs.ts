@@ -463,7 +463,7 @@ function importTabs(event: Event): void {
     const file = fileInput.files[0];
     const reader = new FileReader();
 
-    reader.onload = function(e: ProgressEvent<FileReader>) {
+    reader.onload = function(e: ProgressEvent<FileReader>): void {
       const contents = e.target?.result as string;
       const lines = contents.split('\n');
 
