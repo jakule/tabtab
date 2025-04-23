@@ -228,6 +228,31 @@ describe('Saved Tabs', () => {
     }, 0);
   });
 
+  test('openAllTabsInGroup should handle date-based groups for backward compatibility', () => {
+    // Mock chrome.tabs.create
+    chrome.tabs.create = jest.fn();
+
+    // Wait for initial render
+    setTimeout(() => {
+      // Find the date-based group (for the legacy tab without groupId)
+      const dateGroup = document.querySelector('.tab-group[data-group^="date-"]');
+      const dateGroupKey = dateGroup?.getAttribute('data-group') || '';
+
+      // Find and click the "Open All" button for the date-based group
+      const openAllButton = document.querySelector(`.open-all[data-group="${dateGroupKey}"]`);
+      openAllButton?.dispatchEvent(new Event('click'));
+
+      // Verify chrome.tabs.create was called once for the legacy tab
+      expect(chrome.tabs.create).toHaveBeenCalledTimes(1);
+
+      // The tab should be opened as active
+      expect(chrome.tabs.create).toHaveBeenCalledWith({
+        url: 'https://legacy.com',
+        active: true
+      });
+    }, 0);
+  });
+
   test('removeAllTabsInGroup should remove tabs with the specified groupId', () => {
     // Mock chrome.storage.local.set
     chrome.storage.local.set = jest.fn().mockImplementation((_data, callback) => {
@@ -247,6 +272,37 @@ describe('Saved Tabs', () => {
           savedTabs: expect.arrayContaining([
             expect.objectContaining({ groupId: 'group1' }),
             expect.not.objectContaining({ groupId: 'group2' })
+          ])
+        },
+        expect.any(Function)
+      );
+    }, 0);
+  });
+
+  test('removeAllTabsInGroup should handle date-based groups for backward compatibility', () => {
+    // Mock chrome.storage.local.set
+    chrome.storage.local.set = jest.fn().mockImplementation((_data, callback) => {
+      if (callback) callback();
+    });
+
+    // Wait for initial render
+    setTimeout(() => {
+      // Find the date-based group (for the legacy tab without groupId)
+      const dateGroup = document.querySelector('.tab-group[data-group^="date-"]');
+      const dateGroupKey = dateGroup?.getAttribute('data-group') || '';
+
+      // Find and click the "Remove All" button for the date-based group
+      const removeAllButton = document.querySelector(`.remove-all[data-group="${dateGroupKey}"]`);
+      removeAllButton?.dispatchEvent(new Event('click'));
+
+      // Verify chrome.storage.local.set was called with the updated tabs
+      // (all tabs except the legacy tab without groupId)
+      expect(chrome.storage.local.set).toHaveBeenCalledWith(
+        {
+          savedTabs: expect.arrayContaining([
+            expect.objectContaining({ groupId: 'group1' }),
+            expect.objectContaining({ groupId: 'group2' }),
+            expect.not.objectContaining({ url: 'https://legacy.com' })
           ])
         },
         expect.any(Function)
@@ -323,6 +379,309 @@ describe('Saved Tabs', () => {
       expect(importedTabs[0].groupId).toBeDefined();
       expect(importedTabs[0].groupId).toMatch(/^import-\d+$/);
       expect(importedTabs[1].groupId).toBe(importedTabs[0].groupId);
+    }, 0);
+  });
+
+  test('removeTab should remove a tab with the specified URL', () => {
+    // Mock chrome.storage.local.set
+    chrome.storage.local.set = jest.fn().mockImplementation((_data, callback) => {
+      if (callback) callback();
+    });
+
+    // Wait for initial render
+    setTimeout(() => {
+      // Find and click the "Remove" button for a specific tab
+      const removeButton = document.querySelector('.remove-tab[data-url="https://example.com/page1"]');
+      removeButton?.dispatchEvent(new Event('click'));
+
+      // Verify chrome.storage.local.set was called with the updated tabs
+      // (all tabs except the one with the specified URL)
+      expect(chrome.storage.local.set).toHaveBeenCalledWith(
+        {
+          savedTabs: expect.arrayContaining([
+            expect.not.objectContaining({ url: 'https://example.com/page1' })
+          ])
+        },
+        expect.any(Function)
+      );
+
+      // Verify that chrome.storage.local.get was called again to reload the tabs
+      expect(chrome.storage.local.get).toHaveBeenCalledWith(
+        { savedTabs: [] },
+        expect.any(Function)
+      );
+    }, 0);
+  });
+
+  test('filterTabs should show no results message when no tabs match', () => {
+    // Wait for initial render
+    setTimeout(() => {
+      // Get the search input
+      const searchInput = document.getElementById('searchInput') as HTMLInputElement;
+
+      // Simulate typing a search term that won't match any tabs
+      searchInput.value = 'nonexistentterm';
+      const event = new Event('input');
+      searchInput.dispatchEvent(event);
+
+      // Check that the no results message is shown
+      setTimeout(() => {
+        const noResultsMessage = document.querySelector('.no-results');
+        expect(noResultsMessage).not.toBeNull();
+        expect(noResultsMessage?.textContent).toContain('No tabs match your search');
+        expect(noResultsMessage?.textContent).toContain('nonexistentterm');
+
+        // Test clearing search from the message
+        const clearSearchButton = document.getElementById('clearSearchFromMessage');
+        clearSearchButton?.click();
+
+        // Verify search was cleared
+        expect(searchInput.value).toBe('');
+
+        // No results message should be gone
+        setTimeout(() => {
+          const noResultsMessageAfterClear = document.querySelector('.no-results');
+          expect(noResultsMessageAfterClear).toBeNull();
+        }, 0);
+      }, 0);
+    }, 0);
+  });
+
+  test('exportTabs should create a file with the correct content', () => {
+    // Mock Blob constructor
+    const originalBlob = global.Blob;
+    const mockBlob = jest.fn().mockImplementation((content) => {
+      return {
+        content,
+        type: 'text/plain'
+      };
+    });
+    global.Blob = mockBlob as unknown as typeof Blob;
+
+    // Mock URL.createObjectURL
+    URL.createObjectURL = jest.fn().mockReturnValue('blob:test');
+
+    // Store original createElement
+    const originalCreateElement = document.createElement;
+
+    // Mock anchor element
+    const mockAnchor = {
+      href: '',
+      download: '',
+      click: jest.fn()
+    };
+
+    // Use a safer way to mock createElement
+    document.createElement = jest.fn().mockImplementation((tag: string) => {
+      if (tag === 'a') {
+        return mockAnchor as unknown as HTMLElement;
+      }
+      return originalCreateElement.call(document, tag);
+    });
+
+    // Click export button
+    const exportButton = document.getElementById('exportTabs');
+    exportButton?.click();
+
+    // Verify Blob was created with the correct content
+    expect(mockBlob).toHaveBeenCalled();
+    const blobContent = mockBlob.mock.calls[0][0][0] as string;
+
+    // Check that the content includes the expected headers and tab information
+    expect(blobContent).toContain('TabTab Exported Tabs');
+    expect(blobContent).toContain('Example Page 1');
+    expect(blobContent).toContain('https://example.com/page1');
+    expect(blobContent).toContain('Example Page 2');
+    expect(blobContent).toContain('https://example.com/page2');
+    expect(blobContent).toContain('Another Site');
+    expect(blobContent).toContain('https://another.com');
+
+    // Restore original functions
+    global.Blob = originalBlob;
+    document.createElement = originalCreateElement;
+  });
+
+  test('importTabs should handle empty files', () => {
+    // Create a mock FileReader implementation
+    let mockFileReaderInstance: { readAsText: jest.Mock; onload: null | ((event: ProgressEvent<FileReader>) => void) } | null = null;
+
+    const mockReadAsText = jest.fn().mockImplementation((_file: Blob) => {
+      setTimeout(() => {
+        const mockEvent = {
+          target: {
+            result: '' // Empty file content
+          }
+        } as unknown as ProgressEvent<FileReader>;
+
+        if (mockFileReaderInstance && mockFileReaderInstance.onload) {
+          mockFileReaderInstance.onload(mockEvent);
+        }
+      }, 0);
+    });
+
+    // Create a mock FileReader constructor
+    const MockFileReader = jest.fn().mockImplementation(() => {
+      mockFileReaderInstance = {
+        readAsText: mockReadAsText,
+        onload: null
+      };
+      return mockFileReaderInstance;
+    });
+
+    // Replace the global FileReader with our mock
+    window.FileReader = MockFileReader as unknown as typeof FileReader;
+
+    // Mock file input
+    const fileInput = document.getElementById('importFile') as HTMLInputElement;
+    Object.defineProperty(fileInput, 'files', {
+      value: [new File([''], 'empty.txt')]
+    });
+
+    // Mock chrome.storage.local.get and set
+    chrome.storage.local.get = jest.fn().mockImplementation((_, callback) => {
+      callback({ savedTabs: sampleTabs });
+    });
+
+    chrome.storage.local.set = jest.fn().mockImplementation((_data, callback) => {
+      if (callback) callback();
+    });
+
+    // Mock alert
+    window.alert = jest.fn();
+
+    // Trigger the change event on the file input
+    const changeEvent = new Event('change');
+    fileInput.dispatchEvent(changeEvent);
+
+    // Wait for async operations
+    setTimeout(() => {
+      // Verify chrome.storage.local.set was called
+      expect(chrome.storage.local.set).toHaveBeenCalled();
+
+      // Get the saved tabs from the last call to chrome.storage.local.set
+      const setCall = (chrome.storage.local.set as jest.Mock).mock.calls[0][0];
+      const allTabs = setCall.savedTabs;
+
+      // No new tabs should have been added
+      expect(allTabs.length).toBe(sampleTabs.length);
+
+      // Alert should show 0 tabs imported
+      expect(window.alert).toHaveBeenCalledWith('Successfully imported 0 tabs');
+    }, 0);
+  });
+
+  test('importTabs should handle different URL formats', () => {
+    // Create a mock FileReader implementation
+    let mockFileReaderInstance: { readAsText: jest.Mock; onload: null | ((event: ProgressEvent<FileReader>) => void) } | null = null;
+
+    const mockReadAsText = jest.fn().mockImplementation((_file: Blob) => {
+      setTimeout(() => {
+        // Create a mock event with different URL formats
+        const mockEvent = {
+          target: {
+            result: `Title 1\nhttp://example.org/1\n\nTitle 2\nhttps://example.org/2\n\nInvalid Entry\nnot-a-url\n\nTitle 3\nhttps://example.org/3`
+          }
+        } as unknown as ProgressEvent<FileReader>;
+
+        if (mockFileReaderInstance && mockFileReaderInstance.onload) {
+          mockFileReaderInstance.onload(mockEvent);
+        }
+      }, 0);
+    });
+
+    // Create a mock FileReader constructor
+    const MockFileReader = jest.fn().mockImplementation(() => {
+      mockFileReaderInstance = {
+        readAsText: mockReadAsText,
+        onload: null
+      };
+      return mockFileReaderInstance;
+    });
+
+    // Replace the global FileReader with our mock
+    window.FileReader = MockFileReader as unknown as typeof FileReader;
+
+    // Mock file input
+    const fileInput = document.getElementById('importFile') as HTMLInputElement;
+    Object.defineProperty(fileInput, 'files', {
+      value: [new File(['mock content'], 'import.txt')]
+    });
+
+    // Mock chrome.storage.local.get and set
+    chrome.storage.local.get = jest.fn().mockImplementation((_, callback) => {
+      callback({ savedTabs: sampleTabs });
+    });
+
+    chrome.storage.local.set = jest.fn().mockImplementation((_data, callback) => {
+      if (callback) callback();
+    });
+
+    // Mock alert
+    window.alert = jest.fn();
+
+    // Trigger the change event on the file input
+    const changeEvent = new Event('change');
+    fileInput.dispatchEvent(changeEvent);
+
+    // Wait for async operations
+    setTimeout(() => {
+      // Verify chrome.storage.local.set was called
+      expect(chrome.storage.local.set).toHaveBeenCalled();
+
+      // Get the saved tabs from the last call to chrome.storage.local.set
+      const setCall = (chrome.storage.local.set as jest.Mock).mock.calls[0][0];
+      const allTabs = setCall.savedTabs;
+
+      // Should have added 3 new tabs (the invalid entry should be skipped)
+      expect(allTabs.length).toBe(sampleTabs.length + 3);
+
+      // Get the imported tabs
+      const importedTabs = allTabs.slice(-3);
+
+      // Check that both http:// and https:// URLs were imported
+      expect(importedTabs[0].url).toBe('http://example.org/1');
+      expect(importedTabs[1].url).toBe('https://example.org/2');
+      expect(importedTabs[2].url).toBe('https://example.org/3');
+
+      // Check that titles were imported correctly
+      expect(importedTabs[0].title).toBe('Title 1');
+      expect(importedTabs[1].title).toBe('Title 2');
+      expect(importedTabs[2].title).toBe('Title 3');
+
+      // All imported tabs should have the same groupId
+      const groupId = importedTabs[0].groupId;
+      expect(importedTabs[1].groupId).toBe(groupId);
+      expect(importedTabs[2].groupId).toBe(groupId);
+
+      // Alert should show 3 tabs imported
+      expect(window.alert).toHaveBeenCalledWith('Successfully imported 3 tabs');
+    }, 0);
+  });
+
+  test('filterTabs should hide empty groups when filtering', () => {
+    // Wait for initial render
+    setTimeout(() => {
+      // Get the search input
+      const searchInput = document.getElementById('searchInput') as HTMLInputElement;
+
+      // Simulate typing a search term that will only match tabs in one group
+      searchInput.value = 'Another';
+      const event = new Event('input');
+      searchInput.dispatchEvent(event);
+
+      // Check that groups with no matching tabs are hidden
+      setTimeout(() => {
+        // The group containing "Another Site" should be visible
+        const group2 = document.querySelector('.tab-group[data-group="group2"]') as HTMLElement;
+        expect(group2.style.display).not.toBe('none');
+
+        // Other groups should be hidden
+        const group1 = document.querySelector('.tab-group[data-group="group1"]') as HTMLElement;
+        expect(group1.style.display).toBe('none');
+
+        const dateGroup = document.querySelector('.tab-group[data-group^="date-"]') as HTMLElement;
+        expect(dateGroup.style.display).toBe('none');
+      }, 0);
     }, 0);
   });
 });
