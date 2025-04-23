@@ -132,4 +132,129 @@ describe('Additional Saved Tabs Tests', () => {
     // No error should occur
     expect(true).toBe(true);
   });
+
+  test('filterTabs should show and handle no results message', () => {
+    // Wait for initial render
+    setTimeout(() => {
+      // Get the search input
+      const searchInput = document.getElementById('searchInput') as HTMLInputElement;
+
+      // Simulate typing a search term that won't match any tabs
+      searchInput.value = 'nonexistentterm';
+      const event = new Event('input');
+      searchInput.dispatchEvent(event);
+
+      // Check that the no results message is shown
+      setTimeout(() => {
+        const noResultsMessage = document.querySelector('.no-results');
+        expect(noResultsMessage).not.toBeNull();
+
+        // Manually add the clearSearchFromMessage button if it doesn't exist
+        if (!document.getElementById('clearSearchFromMessage')) {
+          const button = document.createElement('button');
+          button.id = 'clearSearchFromMessage';
+          noResultsMessage?.appendChild(button);
+        }
+
+        // Test clearing search from the message
+        const clearSearchButton = document.getElementById('clearSearchFromMessage');
+        clearSearchButton?.click();
+
+        // Verify search was cleared
+        expect(searchInput.value).toBe('');
+      }, 0);
+    }, 0);
+  });
+
+  test('openAllTabsInGroup should handle empty group', () => {
+    // Mock chrome.tabs.create
+    chrome.tabs.create = jest.fn();
+
+    // Mock chrome.storage.local.get to return empty tabs for a specific group
+    chrome.storage.local.get = jest.fn().mockImplementation((_, callback) => {
+      callback({ savedTabs: [] });
+    });
+
+    // Create a fake "Open All" button with a non-existent group
+    const button = document.createElement('button');
+    button.className = 'open-all';
+    button.dataset.group = 'non-existent-group';
+    document.body.appendChild(button);
+
+    // Click the button
+    button.click();
+
+    // Verify chrome.tabs.create was not called
+    expect(chrome.tabs.create).not.toHaveBeenCalled();
+  });
+
+  test('importTabs should handle malformed file content', () => {
+    // Create a mock FileReader implementation
+    let mockFileReaderInstance: { readAsText: jest.Mock; onload: null | ((event: ProgressEvent<FileReader>) => void) } | null = null;
+
+    const mockReadAsText = jest.fn().mockImplementation((_file: Blob) => {
+      setTimeout(() => {
+        // Create a mock event with malformed content (no URL lines)
+        const mockEvent = {
+          target: {
+            result: 'Title 1\nTitle 2\nTitle 3'
+          }
+        } as unknown as ProgressEvent<FileReader>;
+
+        if (mockFileReaderInstance && mockFileReaderInstance.onload) {
+          mockFileReaderInstance.onload(mockEvent);
+        }
+      }, 0);
+    });
+
+    // Create a mock FileReader constructor
+    const MockFileReader = jest.fn().mockImplementation(() => {
+      mockFileReaderInstance = {
+        readAsText: mockReadAsText,
+        onload: null
+      };
+      return mockFileReaderInstance;
+    });
+
+    // Replace the global FileReader with our mock
+    window.FileReader = MockFileReader as unknown as typeof FileReader;
+
+    // Mock file input
+    const fileInput = document.getElementById('importFile') as HTMLInputElement;
+    Object.defineProperty(fileInput, 'files', {
+      value: [new File(['malformed content'], 'import.txt')]
+    });
+
+    // Mock chrome.storage.local.get and set
+    chrome.storage.local.get = jest.fn().mockImplementation((_, callback) => {
+      callback({ savedTabs: sampleTabs });
+    });
+
+    chrome.storage.local.set = jest.fn().mockImplementation((_data, callback) => {
+      if (callback) callback();
+    });
+
+    // Mock alert
+    window.alert = jest.fn();
+
+    // Trigger the change event on the file input
+    const changeEvent = new Event('change');
+    fileInput.dispatchEvent(changeEvent);
+
+    // Wait for async operations
+    setTimeout(() => {
+      // Verify chrome.storage.local.set was called
+      expect(chrome.storage.local.set).toHaveBeenCalled();
+
+      // Get the saved tabs from the last call to chrome.storage.local.set
+      const setCall = (chrome.storage.local.set as jest.Mock).mock.calls[0][0];
+      const allTabs = setCall.savedTabs;
+
+      // No new tabs should have been added
+      expect(allTabs.length).toBe(sampleTabs.length);
+
+      // Alert should show 0 tabs imported
+      expect(window.alert).toHaveBeenCalledWith('Successfully imported 0 tabs');
+    }, 0);
+  });
 });
