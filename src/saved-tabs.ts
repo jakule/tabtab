@@ -6,10 +6,11 @@ interface SavedTab {
   url: string;
   favicon: string;
   date: number; // timestamp
+  groupId?: string; // unique identifier for the group (optional for backward compatibility)
 }
 
 interface GroupedTabs {
-  [dateKey: string]: SavedTab[];
+  [groupKey: string]: SavedTab[];
 }
 
 interface DomainCount {
@@ -110,24 +111,39 @@ function renderTabs(tabs: SavedTab[]): void {
     return;
   }
 
-  // Group tabs by date (day)
+  // Group tabs by groupId or date (for backward compatibility)
   const groupedTabs: GroupedTabs = {};
   tabs.forEach(tab => {
-    const date = new Date(tab.date);
-    const dateKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+    let groupKey: string;
 
-    if (!groupedTabs[dateKey]) {
-      groupedTabs[dateKey] = [];
+    if (tab.groupId) {
+      // Use groupId if available
+      groupKey = tab.groupId;
+    } else {
+      // Fallback to date for backward compatibility
+      const date = new Date(tab.date);
+      groupKey = `date-${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
     }
-    groupedTabs[dateKey].push(tab);
+
+    if (!groupedTabs[groupKey]) {
+      groupedTabs[groupKey] = [];
+    }
+    groupedTabs[groupKey].push(tab);
   });
 
-  // Sort dates in descending order (newest first)
-  const sortedDates = Object.keys(groupedTabs).sort((a, b) => b.localeCompare(a));
+  // Sort groups in descending order by date (newest first)
+  const sortedGroups = Object.keys(groupedTabs).sort((a, b) => {
+    // Get the newest date from each group
+    const maxDateA = Math.max(...groupedTabs[a].map(tab => tab.date));
+    const maxDateB = Math.max(...groupedTabs[b].map(tab => tab.date));
+    return maxDateB - maxDateA;
+  });
 
   // Render each group
-  sortedDates.forEach(dateKey => {
-    const dateObj = new Date(`${dateKey}T00:00:00`);
+  sortedGroups.forEach(groupKey => {
+    // Get the newest date from the group for display
+    const newestDate = Math.max(...groupedTabs[groupKey].map(tab => tab.date));
+    const dateObj = new Date(newestDate);
     const formattedDate = dateObj.toLocaleDateString(undefined, {
       weekday: 'long',
       year: 'numeric',
@@ -137,15 +153,15 @@ function renderTabs(tabs: SavedTab[]): void {
 
     const groupElement = document.createElement('div');
     groupElement.className = 'tab-group';
-    groupElement.dataset.date = dateKey;
+    groupElement.dataset.group = groupKey;
 
     const groupHeader = document.createElement('div');
     groupHeader.className = 'group-header';
     groupHeader.innerHTML = `
-      <span>${formattedDate} (${groupedTabs[dateKey].length} tabs)</span>
+      <span>${formattedDate} (${groupedTabs[groupKey].length} tabs)</span>
       <div class="button-group">
-        <button class="open-all" data-date="${dateKey}">Open All</button>
-        <button class="remove-all" data-date="${dateKey}">Remove All</button>
+        <button class="open-all" data-group="${groupKey}">Open All</button>
+        <button class="remove-all" data-group="${groupKey}">Remove All</button>
       </div>
     `;
 
@@ -153,7 +169,7 @@ function renderTabs(tabs: SavedTab[]): void {
     tabsList.className = 'tabs-list';
 
     // Sort tabs by domain for better organization
-    const sortedTabs = [...groupedTabs[dateKey]].sort((a, b) => {
+    const sortedTabs = [...groupedTabs[groupKey]].sort((a, b) => {
       const hostA = getHost(a.url);
       const hostB = getHost(b.url);
       return hostA.localeCompare(hostB);
@@ -215,9 +231,9 @@ function addButtonEventListeners(): void {
   // Open all tabs in group
   document.querySelectorAll('.open-all').forEach(button => {
     button.addEventListener('click', function(this: HTMLButtonElement) {
-      const dateKey = this.dataset.date;
-      if (dateKey) {
-        openAllTabsInGroup(dateKey);
+      const groupKey = this.dataset.group;
+      if (groupKey) {
+        openAllTabsInGroup(groupKey);
       }
     });
   });
@@ -225,9 +241,9 @@ function addButtonEventListeners(): void {
   // Remove all tabs in group
   document.querySelectorAll('.remove-all').forEach(button => {
     button.addEventListener('click', function(this: HTMLButtonElement) {
-      const dateKey = this.dataset.date;
-      if (dateKey) {
-        removeAllTabsInGroup(dateKey);
+      const groupKey = this.dataset.group;
+      if (groupKey) {
+        removeAllTabsInGroup(groupKey);
       }
     });
   });
@@ -305,17 +321,23 @@ function removeTab(url: string): void {
 }
 
 // Function to open all tabs in a group
-function openAllTabsInGroup(dateKey: string): void {
+function openAllTabsInGroup(groupKey: string): void {
   chrome.storage.local.get({ savedTabs: [] }, function(result: { savedTabs: SavedTab[] }) {
     const savedTabs = result.savedTabs;
     const tabsToOpen: SavedTab[] = [];
 
     savedTabs.forEach(tab => {
-      const date = new Date(tab.date);
-      const tabDateKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
-
-      if (tabDateKey === dateKey) {
+      // Check if the tab belongs to the specified group
+      if (tab.groupId === groupKey) {
         tabsToOpen.push(tab);
+      } else if (!tab.groupId && groupKey.startsWith('date-')) {
+        // For backward compatibility with tabs that don't have a groupId
+        const date = new Date(tab.date);
+        const tabDateKey = `date-${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+
+        if (tabDateKey === groupKey) {
+          tabsToOpen.push(tab);
+        }
       }
     });
 
@@ -332,13 +354,21 @@ function openAllTabsInGroup(dateKey: string): void {
 }
 
 // Function to remove all tabs in a group
-function removeAllTabsInGroup(dateKey: string): void {
+function removeAllTabsInGroup(groupKey: string): void {
   chrome.storage.local.get({ savedTabs: [] }, function(result: { savedTabs: SavedTab[] }) {
     const savedTabs = result.savedTabs;
     const updatedTabs = savedTabs.filter(tab => {
-      const date = new Date(tab.date);
-      const tabDateKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
-      return tabDateKey !== dateKey;
+      // Keep tabs that don't belong to the specified group
+      if (tab.groupId !== groupKey) {
+        // For backward compatibility with tabs that don't have a groupId
+        if (!tab.groupId && groupKey.startsWith('date-')) {
+          const date = new Date(tab.date);
+          const tabDateKey = `date-${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+          return tabDateKey !== groupKey;
+        }
+        return true;
+      }
+      return false;
     });
 
     chrome.storage.local.set({ savedTabs: updatedTabs }, function() {
@@ -356,24 +386,39 @@ function exportTabs(): void {
     let text = "TabTab Exported Tabs\n";
     text += "=====================\n\n";
 
-    // Group tabs by date
+    // Group tabs by groupId or date (for backward compatibility)
     const groupedTabs: GroupedTabs = {};
     savedTabs.forEach(tab => {
-      const date = new Date(tab.date);
-      const dateKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+      let groupKey: string;
 
-      if (!groupedTabs[dateKey]) {
-        groupedTabs[dateKey] = [];
+      if (tab.groupId) {
+        // Use groupId if available
+        groupKey = tab.groupId;
+      } else {
+        // Fallback to date for backward compatibility
+        const date = new Date(tab.date);
+        groupKey = `date-${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
       }
-      groupedTabs[dateKey].push(tab);
+
+      if (!groupedTabs[groupKey]) {
+        groupedTabs[groupKey] = [];
+      }
+      groupedTabs[groupKey].push(tab);
     });
 
-    // Sort dates in descending order (newest first)
-    const sortedDates = Object.keys(groupedTabs).sort((a, b) => b.localeCompare(a));
+    // Sort groups in descending order by date (newest first)
+    const sortedGroups = Object.keys(groupedTabs).sort((a, b) => {
+      // Get the newest date from each group
+      const maxDateA = Math.max(...groupedTabs[a].map(tab => tab.date));
+      const maxDateB = Math.max(...groupedTabs[b].map(tab => tab.date));
+      return maxDateB - maxDateA;
+    });
 
     // Add each group to the text
-    sortedDates.forEach(dateKey => {
-      const dateObj = new Date(`${dateKey}T00:00:00`);
+    sortedGroups.forEach(groupKey => {
+      // Get the newest date from the group for display
+      const newestDate = Math.max(...groupedTabs[groupKey].map(tab => tab.date));
+      const dateObj = new Date(newestDate);
       const formattedDate = dateObj.toLocaleDateString(undefined, {
         weekday: 'long',
         year: 'numeric',
@@ -381,10 +426,10 @@ function exportTabs(): void {
         day: 'numeric'
       });
 
-      text += `== ${formattedDate} ==\n\n`;
+      text += `== ${formattedDate} (${groupedTabs[groupKey].length} tabs) ==\n\n`;
 
       // Sort tabs by domain
-      const sortedTabs = [...groupedTabs[dateKey]].sort((a, b) => {
+      const sortedTabs = [...groupedTabs[groupKey]].sort((a, b) => {
         const hostA = getHost(a.url);
         const hostB = getHost(b.url);
         return hostA.localeCompare(hostB);
@@ -424,6 +469,8 @@ function importTabs(event: Event): void {
 
       const importedTabs: SavedTab[] = [];
       const currentDate = Date.now();
+      // Generate a unique identifier for this group of imported tabs
+      const groupId = `import-${currentDate}`;
 
       // Simple parsing logic - look for pairs of title and URL
       for (let i = 0; i < lines.length - 1; i++) {
@@ -436,7 +483,8 @@ function importTabs(event: Event): void {
             title: line,
             url: nextLine,
             favicon: '',
-            date: currentDate
+            date: currentDate,
+            groupId: groupId
           });
 
           // Skip the URL line

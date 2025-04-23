@@ -39,6 +39,7 @@ interface SavedTab {
   url: string;
   favicon: string;
   date: number; // timestamp
+  groupId: string; // unique identifier for the group
 }
 
 // Function to group tabs by host
@@ -113,6 +114,9 @@ function saveAndCloseTabs(tabs: chrome.tabs.Tab[]): void {
     statusElement.textContent = 'Saving and closing tabs...';
   }
 
+  // Generate a unique identifier for this group of tabs
+  const groupId = Date.now().toString();
+
   // Extract tab information - filter out chrome:// and extension pages
   const savedTabs: SavedTab[] = tabs
     .filter(tab => {
@@ -125,7 +129,8 @@ function saveAndCloseTabs(tabs: chrome.tabs.Tab[]): void {
       title: tab.title || '',
       url: tab.url || '',
       favicon: tab.favIconUrl || '',
-      date: Date.now()
+      date: Date.now(),
+      groupId: groupId
     }));
 
   // Save tabs to storage
