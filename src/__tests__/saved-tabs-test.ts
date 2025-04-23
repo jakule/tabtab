@@ -230,7 +230,7 @@ describe('Saved Tabs', () => {
 
   test('removeAllTabsInGroup should remove tabs with the specified groupId', () => {
     // Mock chrome.storage.local.set
-    chrome.storage.local.set = jest.fn().mockImplementation((data, callback) => {
+    chrome.storage.local.set = jest.fn().mockImplementation((_data, callback) => {
       if (callback) callback();
     });
 
@@ -255,24 +255,38 @@ describe('Saved Tabs', () => {
   });
 
   test('importTabs should assign a unique groupId to imported tabs', () => {
-    // Mock FileReader and its onload event
-    const mockFileReader = {
-      readAsText: jest.fn().mockImplementation((_file) => {
-        // Simulate reading the file
-        setTimeout(() => {
-          if (mockFileReader.onload) {
-            const event = { 
-              target: { 
-                result: 'Title 1\nhttps://example.org/1\n\nTitle 2\nhttps://example.org/2' 
-              } 
-            };
-            mockFileReader.onload(event as unknown as ProgressEvent<FileReader>);
+    // Create a mock FileReader implementation
+    let mockFileReaderInstance: { readAsText: jest.Mock; onload: null | ((event: ProgressEvent<FileReader>) => void) } | null = null;
+
+    const mockReadAsText = jest.fn().mockImplementation((_file: Blob) => {
+      // Implementation will be handled by the mock
+      setTimeout(() => {
+        // Create a mock event with the necessary data
+        const mockEvent = {
+          target: {
+            result: 'Title 1\nhttps://example.org/1\n\nTitle 2\nhttps://example.org/2'
           }
-        }, 0);
-      }),
-      onload: null
-    };
-    window.FileReader = jest.fn().mockImplementation(() => mockFileReader);
+        } as unknown as ProgressEvent<FileReader>;
+
+        // Call onload on the current instance
+        if (mockFileReaderInstance && mockFileReaderInstance.onload) {
+          mockFileReaderInstance.onload(mockEvent);
+        }
+      }, 0);
+    });
+
+    // Create a mock FileReader constructor
+    const MockFileReader = jest.fn().mockImplementation(() => {
+      // Create a new instance
+      mockFileReaderInstance = {
+        readAsText: mockReadAsText,
+        onload: null
+      };
+      return mockFileReaderInstance;
+    });
+
+    // Replace the global FileReader with our mock
+    window.FileReader = MockFileReader as unknown as typeof FileReader;
 
     // Mock file input
     const fileInput = document.getElementById('importFile') as HTMLInputElement;
@@ -285,7 +299,7 @@ describe('Saved Tabs', () => {
       callback({ savedTabs: sampleTabs });
     });
 
-    chrome.storage.local.set = jest.fn().mockImplementation((data, callback) => {
+    chrome.storage.local.set = jest.fn().mockImplementation((_data, callback) => {
       if (callback) callback();
     });
 
@@ -299,7 +313,7 @@ describe('Saved Tabs', () => {
       expect(chrome.storage.local.set).toHaveBeenCalled();
 
       // Get the saved tabs from the last call to chrome.storage.local.set
-      const setCall = chrome.storage.local.set.mock.calls[0][0];
+      const setCall = (chrome.storage.local.set as jest.Mock).mock.calls[0][0];
       const allTabs = setCall.savedTabs;
 
       // The last two tabs should be the imported ones
