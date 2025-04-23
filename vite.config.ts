@@ -47,15 +47,15 @@ const copyAssetsPlugin = (buildMode: string) => {
       }
 
       // Copy icon files - assuming they exist in images/icons
-      const iconSizes = [16, 48, 128];
+      const iconSizes = [16, 32, 128, 256];
       iconSizes.forEach(size => {
         try {
           fs.copyFileSync(
-            resolve(__dirname, `images/icon${size}.png`),
-            resolve(__dirname, `${distDir}/icons/icon${size}.png`)
+            resolve(__dirname, `images/icon-${size}.png`),
+            resolve(__dirname, `${distDir}/icons/icon-${size}.png`)
           );
         } catch (e) {
-          console.warn(`Warning: Could not copy icon${size}.png`);
+          console.warn(`Warning: Could not copy icon-${size}.png`);
         }
       });
     }
