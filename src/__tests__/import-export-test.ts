@@ -6,7 +6,7 @@ import { SavedTab } from '../types/tab-types';
 
 // Mock the utils import
 jest.mock('../utils.ts', () => ({
-  getHost: jest.fn((url) => {
+  getHost: jest.fn(url => {
     try {
       return new URL(url).hostname;
     } catch {
@@ -22,22 +22,22 @@ const sampleTabs = [
     url: 'https://example.com/group1/tab1',
     favicon: 'https://example.com/favicon.ico',
     date: Date.now() - 86400000, // yesterday
-    groupId: 'group1'
+    groupId: 'group1',
   },
   {
     title: 'Group 1 Tab 2',
     url: 'https://example.com/group1/tab2',
     favicon: 'https://example.com/favicon.ico',
     date: Date.now() - 86400000, // yesterday
-    groupId: 'group1'
+    groupId: 'group1',
   },
   {
     title: 'Group 2 Tab 1',
     url: 'https://example.com/group2/tab1',
     favicon: 'https://example.com/favicon.ico',
     date: Date.now(),
-    groupId: 'group2'
-  }
+    groupId: 'group2',
+  },
 ];
 
 // Setup test HTML
@@ -75,7 +75,10 @@ beforeEach(() => {
 describe('Import/Export Sum Behavior', () => {
   test('importTabs should not create duplicates when importing tabs that already exist', () => {
     // Create a mock FileReader implementation
-    let mockFileReaderInstance: { readAsText: jest.Mock; onload: null | ((event: ProgressEvent<FileReader>) => void) } | null = null;
+    let mockFileReaderInstance: {
+      readAsText: jest.Mock;
+      onload: null | ((event: ProgressEvent<FileReader>) => void);
+    } | null = null;
 
     // Create a mock file content that simulates an exported file with tabs that already exist
     const mockFileContent = `TabTab Exported Tabs
@@ -100,8 +103,8 @@ https://example.com/group2/tab1
       setTimeout(() => {
         const mockEvent = {
           target: {
-            result: mockFileContent
-          }
+            result: mockFileContent,
+          },
         } as unknown as ProgressEvent<FileReader>;
 
         if (mockFileReaderInstance && mockFileReaderInstance.onload) {
@@ -114,7 +117,7 @@ https://example.com/group2/tab1
     const MockFileReader = jest.fn().mockImplementation(() => {
       mockFileReaderInstance = {
         readAsText: mockReadAsText,
-        onload: null
+        onload: null,
       };
       return mockFileReaderInstance;
     });
@@ -125,7 +128,7 @@ https://example.com/group2/tab1
     // Mock file input
     const fileInput = document.getElementById('importFile') as HTMLInputElement;
     Object.defineProperty(fileInput, 'files', {
-      value: [new File([mockFileContent], 'export.txt')]
+      value: [new File([mockFileContent], 'export.txt')],
     });
 
     // Mock chrome.storage.local.set
@@ -159,7 +162,10 @@ https://example.com/group2/tab1
 
   test('importTabs should add only new tabs when importing a mix of existing and new tabs', () => {
     // Create a mock FileReader implementation
-    let mockFileReaderInstance: { readAsText: jest.Mock; onload: null | ((event: ProgressEvent<FileReader>) => void) } | null = null;
+    let mockFileReaderInstance: {
+      readAsText: jest.Mock;
+      onload: null | ((event: ProgressEvent<FileReader>) => void);
+    } | null = null;
 
     // Create a mock file content that simulates an exported file with a mix of existing and new tabs
     const mockFileContent = `TabTab Exported Tabs
@@ -195,8 +201,8 @@ https://example.com/group3/tab1
       setTimeout(() => {
         const mockEvent = {
           target: {
-            result: mockFileContent
-          }
+            result: mockFileContent,
+          },
         } as unknown as ProgressEvent<FileReader>;
 
         if (mockFileReaderInstance && mockFileReaderInstance.onload) {
@@ -209,7 +215,7 @@ https://example.com/group3/tab1
     const MockFileReader = jest.fn().mockImplementation(() => {
       mockFileReaderInstance = {
         readAsText: mockReadAsText,
-        onload: null
+        onload: null,
       };
       return mockFileReaderInstance;
     });
@@ -220,7 +226,7 @@ https://example.com/group3/tab1
     // Mock file input
     const fileInput = document.getElementById('importFile') as HTMLInputElement;
     Object.defineProperty(fileInput, 'files', {
-      value: [new File([mockFileContent], 'export.txt')]
+      value: [new File([mockFileContent], 'export.txt')],
     });
 
     // Mock chrome.storage.local.set
@@ -254,7 +260,9 @@ https://example.com/group3/tab1
       expect(urls).toContain('https://example.com/group3/tab1');
 
       // Alert should show 3 tabs imported
-      expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('Successfully imported 3 tabs'));
+      expect(window.alert).toHaveBeenCalledWith(
+        expect.stringContaining('Successfully imported 3 tabs')
+      );
     }, 0);
   });
 });

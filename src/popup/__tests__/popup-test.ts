@@ -5,7 +5,7 @@ import '../../test/test-setup.ts';
 
 // Mock the utils import
 jest.mock('../../utils.ts', () => ({
-  getHost: jest.fn((url) => {
+  getHost: jest.fn(url => {
     try {
       return new URL(url).hostname;
     } catch {
@@ -35,7 +35,6 @@ beforeEach(() => {
 
   // Simulate that the DOM has finished loading
   document.dispatchEvent(new Event('DOMContentLoaded'));
-
 });
 
 describe('Popup', () => {
@@ -56,10 +55,7 @@ describe('Popup', () => {
     document.getElementById('groupTabs')?.click();
 
     // Verify that chrome.tabs.query was called
-    expect(chrome.tabs.query).toHaveBeenCalledWith(
-      { currentWindow: true },
-      expect.any(Function)
-    );
+    expect(chrome.tabs.query).toHaveBeenCalledWith({ currentWindow: true }, expect.any(Function));
   });
 
   test('Ungroup Tabs button should query tabs when clicked', () => {
@@ -77,10 +73,7 @@ describe('Popup', () => {
     document.getElementById('ungroupTabs')?.click();
 
     // Verify that chrome.tabs.query was called
-    expect(chrome.tabs.query).toHaveBeenCalledWith(
-      { currentWindow: true },
-      expect.any(Function)
-    );
+    expect(chrome.tabs.query).toHaveBeenCalledWith({ currentWindow: true }, expect.any(Function));
   });
 
   test('Save & Close button should query tabs when clicked', () => {
@@ -103,10 +96,7 @@ describe('Popup', () => {
     document.getElementById('saveCloseTabs')?.click();
 
     // Verify that chrome.tabs.query was called
-    expect(chrome.tabs.query).toHaveBeenCalledWith(
-      { currentWindow: true },
-      expect.any(Function)
-    );
+    expect(chrome.tabs.query).toHaveBeenCalledWith({ currentWindow: true }, expect.any(Function));
   });
 
   test('View Saved Tabs button should create a new tab', () => {
@@ -120,8 +110,8 @@ describe('Popup', () => {
     document.getElementById('viewSavedTabs')?.click();
 
     // Verify that chrome.tabs.create was called with the correct URL
-    expect(chrome.tabs.create).toHaveBeenCalledWith({ 
-      url: expect.stringContaining('saved-tabs.html') 
+    expect(chrome.tabs.create).toHaveBeenCalledWith({
+      url: expect.stringContaining('saved-tabs.html'),
     });
   });
 });

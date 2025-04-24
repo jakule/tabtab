@@ -1,4 +1,4 @@
-import {getHost} from "./utils.ts";
+import { getHost } from './utils.ts';
 
 // Helper function to escape HTML attributes
 function escapeHtml(str: string): string {
@@ -27,17 +27,17 @@ interface DomainCount {
   [domain: string]: number;
 }
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
   loadSavedTabs();
 
   // Search functionality
   const searchInput = document.getElementById('searchInput') as HTMLInputElement;
-  searchInput.addEventListener('input', function() {
+  searchInput.addEventListener('input', function () {
     filterTabs(searchInput.value);
   });
 
   // Clear search
-  document.getElementById('clearSearch')?.addEventListener('click', function() {
+  document.getElementById('clearSearch')?.addEventListener('click', function () {
     searchInput.value = '';
     filterTabs('');
   });
@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('exportTabs')?.addEventListener('click', exportTabs);
 
   // Import tabs
-  document.getElementById('importTabs')?.addEventListener('click', function() {
+  document.getElementById('importTabs')?.addEventListener('click', function () {
     const importFileElement = document.getElementById('importFile');
     if (importFileElement) {
       importFileElement.click();
@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Function to load saved tabs
 function loadSavedTabs(): void {
-  chrome.storage.local.get({ savedTabs: [] }, function(result: { savedTabs: SavedTab[] }) {
+  chrome.storage.local.get({ savedTabs: [] }, function (result: { savedTabs: SavedTab[] }) {
     const savedTabs = result.savedTabs;
     updateStats(savedTabs);
     renderTabs(savedTabs);
@@ -158,7 +158,7 @@ function renderTabs(tabs: SavedTab[]): void {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
     });
 
     const groupElement = document.createElement('div');
@@ -185,14 +185,15 @@ function renderTabs(tabs: SavedTab[]): void {
       return hostA.localeCompare(hostB);
     });
 
-    sortedTabs.forEach((tab) => {
+    sortedTabs.forEach(tab => {
       const tabElement = document.createElement('div');
       tabElement.className = 'tab-item';
       tabElement.dataset.url = escapeHtml(tab.url);
       tabElement.dataset.title = escapeHtml(tab.title || '');
 
       // Use a default favicon if none is available
-      const defaultFavicon = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="8" fill="%23ddd"/></svg>';
+      const defaultFavicon =
+        'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="8" fill="%23ddd"/></svg>';
       const favicon = tab.favicon || defaultFavicon;
 
       // Create elements using DOM methods instead of innerHTML
@@ -201,7 +202,9 @@ function renderTabs(tabs: SavedTab[]): void {
       faviconImg.className = 'tab-favicon';
       faviconImg.src = favicon;
       faviconImg.alt = '';
-      faviconImg.onerror = function(): void { this.src = defaultFavicon; };
+      faviconImg.onerror = function (): void {
+        this.src = defaultFavicon;
+      };
 
       // Tab title
       const titleDiv = document.createElement('div');
@@ -249,7 +252,7 @@ function renderTabs(tabs: SavedTab[]): void {
 function addButtonEventListeners(): void {
   // Open tab button
   document.querySelectorAll('.open-tab').forEach(button => {
-    button.addEventListener('click', function(this: HTMLButtonElement) {
+    button.addEventListener('click', function (this: HTMLButtonElement) {
       const url = this.dataset.url;
       if (url) {
         chrome.tabs.create({ url });
@@ -259,7 +262,7 @@ function addButtonEventListeners(): void {
 
   // Remove tab button
   document.querySelectorAll('.remove-tab').forEach(button => {
-    button.addEventListener('click', function(this: HTMLButtonElement) {
+    button.addEventListener('click', function (this: HTMLButtonElement) {
       const url = this.dataset.url;
       if (url) {
         removeTab(url);
@@ -269,7 +272,7 @@ function addButtonEventListeners(): void {
 
   // Open all tabs in group
   document.querySelectorAll('.open-all').forEach(button => {
-    button.addEventListener('click', function(this: HTMLButtonElement) {
+    button.addEventListener('click', function (this: HTMLButtonElement) {
       const groupKey = this.dataset.group;
       if (groupKey) {
         openAllTabsInGroup(groupKey);
@@ -279,7 +282,7 @@ function addButtonEventListeners(): void {
 
   // Remove all tabs in group
   document.querySelectorAll('.remove-all').forEach(button => {
-    button.addEventListener('click', function(this: HTMLButtonElement) {
+    button.addEventListener('click', function (this: HTMLButtonElement) {
       const groupKey = this.dataset.group;
       if (groupKey) {
         removeAllTabsInGroup(groupKey);
@@ -293,7 +296,7 @@ function filterTabs(query: string): void {
   const normalizedQuery = query.toLowerCase();
   let visibleTabsCount = 0;
 
-  document.querySelectorAll('.tab-item').forEach((tabElement) => {
+  document.querySelectorAll('.tab-item').forEach(tabElement => {
     const element = tabElement as HTMLElement;
     const title = element.dataset.title?.toLowerCase() || '';
     const url = element.dataset.url?.toLowerCase() || '';
@@ -307,7 +310,7 @@ function filterTabs(query: string): void {
   });
 
   // Hide empty groups
-  document.querySelectorAll('.tab-group').forEach((groupElement) => {
+  document.querySelectorAll('.tab-group').forEach(groupElement => {
     const element = groupElement as HTMLElement;
     const visibleTabs = element.querySelectorAll('.tab-item[style="display: none;"]').length;
     const totalTabs = element.querySelectorAll('.tab-item').length;
@@ -332,7 +335,7 @@ function filterTabs(query: string): void {
           </div>
         `;
 
-        document.getElementById('clearSearchFromMessage')?.addEventListener('click', function() {
+        document.getElementById('clearSearchFromMessage')?.addEventListener('click', function () {
           const searchInput = document.getElementById('searchInput') as HTMLInputElement;
           searchInput.value = '';
           filterTabs('');
@@ -349,11 +352,11 @@ function filterTabs(query: string): void {
 
 // Function to remove a tab
 function removeTab(url: string): void {
-  chrome.storage.local.get({ savedTabs: [] }, function(result: { savedTabs: SavedTab[] }) {
+  chrome.storage.local.get({ savedTabs: [] }, function (result: { savedTabs: SavedTab[] }) {
     const savedTabs = result.savedTabs;
     const updatedTabs = savedTabs.filter(tab => tab.url !== url);
 
-    chrome.storage.local.set({ savedTabs: updatedTabs }, function() {
+    chrome.storage.local.set({ savedTabs: updatedTabs }, function () {
       loadSavedTabs();
     });
   });
@@ -361,7 +364,7 @@ function removeTab(url: string): void {
 
 // Function to open all tabs in a group
 function openAllTabsInGroup(groupKey: string): void {
-  chrome.storage.local.get({ savedTabs: [] }, function(result: { savedTabs: SavedTab[] }) {
+  chrome.storage.local.get({ savedTabs: [] }, function (result: { savedTabs: SavedTab[] }) {
     const savedTabs = result.savedTabs;
     const tabsToOpen: SavedTab[] = [];
 
@@ -394,7 +397,7 @@ function openAllTabsInGroup(groupKey: string): void {
 
 // Function to remove all tabs in a group
 function removeAllTabsInGroup(groupKey: string): void {
-  chrome.storage.local.get({ savedTabs: [] }, function(result: { savedTabs: SavedTab[] }) {
+  chrome.storage.local.get({ savedTabs: [] }, function (result: { savedTabs: SavedTab[] }) {
     const savedTabs = result.savedTabs;
     const updatedTabs = savedTabs.filter(tab => {
       // Keep tabs that don't belong to the specified group
@@ -410,7 +413,7 @@ function removeAllTabsInGroup(groupKey: string): void {
       return false;
     });
 
-    chrome.storage.local.set({ savedTabs: updatedTabs }, function() {
+    chrome.storage.local.set({ savedTabs: updatedTabs }, function () {
       loadSavedTabs();
     });
   });
@@ -418,12 +421,12 @@ function removeAllTabsInGroup(groupKey: string): void {
 
 // Function to export tabs
 function exportTabs(): void {
-  chrome.storage.local.get({ savedTabs: [] }, function(result: { savedTabs: SavedTab[] }) {
+  chrome.storage.local.get({ savedTabs: [] }, function (result: { savedTabs: SavedTab[] }) {
     const savedTabs = result.savedTabs;
 
     // Create a text representation
-    let text = "TabTab Exported Tabs\n";
-    text += "=====================\n\n";
+    let text = 'TabTab Exported Tabs\n';
+    text += '=====================\n\n';
 
     // Group tabs by groupId or date (for backward compatibility)
     const groupedTabs: GroupedTabs = {};
@@ -462,7 +465,7 @@ function exportTabs(): void {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
-        day: 'numeric'
+        day: 'numeric',
       });
 
       text += `== ${formattedDate} (${groupedTabs[groupKey].length} tabs) ==\n\n`;
@@ -478,7 +481,7 @@ function exportTabs(): void {
         text += `${tab.title || 'Untitled'}\n${tab.url}\n\n`;
       });
 
-      text += "\n";
+      text += '\n';
     });
 
     // Create a download link
@@ -502,7 +505,7 @@ function importTabs(event: Event): void {
     const file = fileInput.files[0];
     const reader = new FileReader();
 
-    reader.onload = function(e: ProgressEvent<FileReader>): void {
+    reader.onload = function (e: ProgressEvent<FileReader>): void {
       const contents = e.target?.result as string;
       const lines = contents.split('\n');
 
@@ -560,7 +563,7 @@ function importTabs(event: Event): void {
               url: url,
               favicon: favicon,
               date: currentGroupDate,
-              groupId: currentGroupId
+              groupId: currentGroupId,
             });
 
             // Skip the URL line
@@ -570,7 +573,7 @@ function importTabs(event: Event): void {
       }
 
       // Add imported tabs to storage
-      chrome.storage.local.get({ savedTabs: [] }, function(result: { savedTabs: SavedTab[] }) {
+      chrome.storage.local.get({ savedTabs: [] }, function (result: { savedTabs: SavedTab[] }) {
         const savedTabs = result.savedTabs;
 
         // Create a map of existing tabs by URL for quick lookup
@@ -580,14 +583,18 @@ function importTabs(event: Event): void {
         });
 
         // Filter out imported tabs that already exist in savedTabs
-        const newImportedTabs = importedTabs.filter(importedTab => !existingTabsByUrl.has(importedTab.url));
+        const newImportedTabs = importedTabs.filter(
+          importedTab => !existingTabsByUrl.has(importedTab.url)
+        );
 
         // Combine existing tabs with new imported tabs
         const allTabs = [...savedTabs, ...newImportedTabs];
 
-        chrome.storage.local.set({ savedTabs: allTabs }, function() {
+        chrome.storage.local.set({ savedTabs: allTabs }, function () {
           loadSavedTabs();
-          alert(`Successfully imported ${newImportedTabs.length} tabs in ${new Set(newImportedTabs.map(tab => tab.groupId)).size} groups`);
+          alert(
+            `Successfully imported ${newImportedTabs.length} tabs in ${new Set(newImportedTabs.map(tab => tab.groupId)).size} groups`
+          );
         });
       });
     };

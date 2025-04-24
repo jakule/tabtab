@@ -15,20 +15,11 @@ declare namespace chrome.storage {
       callback?: (items: Record<string, unknown>) => void
     ): void;
 
-    getBytesInUse(
-      keys: string | string[] | null,
-      callback?: (bytesInUse: number) => void
-    ): void;
+    getBytesInUse(keys: string | string[] | null, callback?: (bytesInUse: number) => void): void;
 
-    set(
-      items: Record<string, unknown>,
-      callback?: () => void
-    ): void;
+    set(items: Record<string, unknown>, callback?: () => void): void;
 
-    remove(
-      keys: string | string[],
-      callback?: () => void
-    ): void;
+    remove(keys: string | string[], callback?: () => void): void;
 
     clear(callback?: () => void): void;
   }
@@ -53,9 +44,7 @@ declare namespace chrome.storage {
     local: StorageAreaLocal;
     sync: StorageAreaSync;
     session: StorageAreaSession;
-    onChanged: chrome.events.Event<
-      (changes: StorageChanges, areaName: string) => void
-    >;
+    onChanged: chrome.events.Event<(changes: StorageChanges, areaName: string) => void>;
     managed: StorageArea;
   }
 }

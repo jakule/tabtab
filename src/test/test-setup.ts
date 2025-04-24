@@ -18,7 +18,7 @@ const createChromeApiMock = (): Record<string, unknown> => {
       },
     },
     runtime: {
-      getURL: jest.fn().mockImplementation((path) => `chrome-extension://mock-extension-id/${path}`),
+      getURL: jest.fn().mockImplementation(path => `chrome-extension://mock-extension-id/${path}`),
     },
   };
 };

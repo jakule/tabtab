@@ -6,7 +6,7 @@ import { SavedTab } from '../types/tab-types';
 
 // Mock the utils import
 jest.mock('../utils.ts', () => ({
-  getHost: jest.fn((url) => {
+  getHost: jest.fn(url => {
     try {
       return new URL(url).hostname;
     } catch {
@@ -22,29 +22,29 @@ const sampleTabs = [
     url: 'https://example.com/page1',
     favicon: 'https://example.com/favicon.ico',
     date: Date.now() - 86400000, // yesterday
-    groupId: 'group1'
+    groupId: 'group1',
   },
   {
     title: 'Example Page 2',
     url: 'https://example.com/page2',
     favicon: '',
     date: Date.now(),
-    groupId: 'group1'
+    groupId: 'group1',
   },
   {
     title: 'Another Site',
     url: 'https://another.com',
     favicon: 'https://another.com/favicon.ico',
     date: Date.now(),
-    groupId: 'group2'
+    groupId: 'group2',
   },
   {
     title: 'Legacy Tab',
     url: 'https://legacy.com',
     favicon: 'https://legacy.com/favicon.ico',
-    date: Date.now() - 172800000 // 2 days ago
+    date: Date.now() - 172800000, // 2 days ago
     // No groupId to test backward compatibility
-  }
+  },
 ];
 
 // Setup test HTML
@@ -82,10 +82,7 @@ beforeEach(() => {
 describe('Saved Tabs', () => {
   test('should render tabs from storage on load', () => {
     // Verify chrome.storage.local.get was called
-    expect(chrome.storage.local.get).toHaveBeenCalledWith(
-      { savedTabs: [] },
-      expect.any(Function)
-    );
+    expect(chrome.storage.local.get).toHaveBeenCalledWith({ savedTabs: [] }, expect.any(Function));
 
     // Wait for DOM updates
     setTimeout(() => {
@@ -112,8 +109,9 @@ describe('Saved Tabs', () => {
 
       // Check filtering
       setTimeout(() => {
-        const visibleTabs = Array.from(document.querySelectorAll('.tab-item'))
-          .filter(el => (el as HTMLElement).style.display !== 'none');
+        const visibleTabs = Array.from(document.querySelectorAll('.tab-item')).filter(
+          el => (el as HTMLElement).style.display !== 'none'
+        );
 
         // Should only show the "Another Site" tab
         expect(visibleTabs.length).toBe(1);
@@ -138,8 +136,9 @@ describe('Saved Tabs', () => {
 
       // All tabs should be visible again
       setTimeout(() => {
-        const visibleTabs = Array.from(document.querySelectorAll('.tab-item'))
-          .filter(el => (el as HTMLElement).style.display !== 'none');
+        const visibleTabs = Array.from(document.querySelectorAll('.tab-item')).filter(
+          el => (el as HTMLElement).style.display !== 'none'
+        );
         expect(visibleTabs.length).toBe(sampleTabs.length);
       }, 0);
     }, 0);
@@ -153,11 +152,11 @@ describe('Saved Tabs', () => {
     const mockAnchor = {
       href: '',
       download: '',
-      click: jest.fn()
+      click: jest.fn(),
     };
     // Store original createElement
     const originalCreateElement = document.createElement;
-    document.createElement = jest.fn().mockImplementation((tag) => {
+    document.createElement = jest.fn().mockImplementation(tag => {
       if (tag === 'a') {
         return mockAnchor as unknown as HTMLElement;
       }
@@ -220,11 +219,11 @@ describe('Saved Tabs', () => {
       // First tab should be active, second should not
       expect(chrome.tabs.create).toHaveBeenCalledWith({
         url: 'https://example.com/page1',
-        active: true
+        active: true,
       });
       expect(chrome.tabs.create).toHaveBeenCalledWith({
         url: 'https://example.com/page2',
-        active: false
+        active: false,
       });
     }, 0);
   });
@@ -249,7 +248,7 @@ describe('Saved Tabs', () => {
       // The tab should be opened as active
       expect(chrome.tabs.create).toHaveBeenCalledWith({
         url: 'https://legacy.com',
-        active: true
+        active: true,
       });
     }, 0);
   });
@@ -272,8 +271,8 @@ describe('Saved Tabs', () => {
         {
           savedTabs: expect.arrayContaining([
             expect.objectContaining({ groupId: 'group1' }),
-            expect.not.objectContaining({ groupId: 'group2' })
-          ])
+            expect.not.objectContaining({ groupId: 'group2' }),
+          ]),
         },
         expect.any(Function)
       );
@@ -303,8 +302,8 @@ describe('Saved Tabs', () => {
           savedTabs: expect.arrayContaining([
             expect.objectContaining({ groupId: 'group1' }),
             expect.objectContaining({ groupId: 'group2' }),
-            expect.not.objectContaining({ url: 'https://legacy.com' })
-          ])
+            expect.not.objectContaining({ url: 'https://legacy.com' }),
+          ]),
         },
         expect.any(Function)
       );
@@ -313,7 +312,10 @@ describe('Saved Tabs', () => {
 
   test('importTabs should assign a unique groupId to imported tabs', () => {
     // Create a mock FileReader implementation
-    let mockFileReaderInstance: { readAsText: jest.Mock; onload: null | ((event: ProgressEvent<FileReader>) => void) } | null = null;
+    let mockFileReaderInstance: {
+      readAsText: jest.Mock;
+      onload: null | ((event: ProgressEvent<FileReader>) => void);
+    } | null = null;
 
     const mockReadAsText = jest.fn().mockImplementation((_file: Blob) => {
       // Implementation will be handled by the mock
@@ -321,8 +323,8 @@ describe('Saved Tabs', () => {
         // Create a mock event with the necessary data
         const mockEvent = {
           target: {
-            result: 'Title 1\nhttps://example.org/1\n\nTitle 2\nhttps://example.org/2'
-          }
+            result: 'Title 1\nhttps://example.org/1\n\nTitle 2\nhttps://example.org/2',
+          },
         } as unknown as ProgressEvent<FileReader>;
 
         // Call onload on the current instance
@@ -337,7 +339,7 @@ describe('Saved Tabs', () => {
       // Create a new instance
       mockFileReaderInstance = {
         readAsText: mockReadAsText,
-        onload: null
+        onload: null,
       };
       return mockFileReaderInstance;
     });
@@ -348,7 +350,12 @@ describe('Saved Tabs', () => {
     // Mock file input
     const fileInput = document.getElementById('importFile') as HTMLInputElement;
     Object.defineProperty(fileInput, 'files', {
-      value: [new File(['Title 1\nhttps://example.org/1\n\nTitle 2\nhttps://example.org/2'], 'import.txt')]
+      value: [
+        new File(
+          ['Title 1\nhttps://example.org/1\n\nTitle 2\nhttps://example.org/2'],
+          'import.txt'
+        ),
+      ],
     });
 
     // Mock chrome.storage.local.get and set
@@ -392,7 +399,9 @@ describe('Saved Tabs', () => {
     // Wait for initial render
     setTimeout(() => {
       // Find and click the "Remove" button for a specific tab
-      const removeButton = document.querySelector('.remove-tab[data-url="https://example.com/page1"]');
+      const removeButton = document.querySelector(
+        '.remove-tab[data-url="https://example.com/page1"]'
+      );
       removeButton?.dispatchEvent(new Event('click'));
 
       // Verify chrome.storage.local.set was called with the updated tabs
@@ -400,8 +409,8 @@ describe('Saved Tabs', () => {
       expect(chrome.storage.local.set).toHaveBeenCalledWith(
         {
           savedTabs: expect.arrayContaining([
-            expect.not.objectContaining({ url: 'https://example.com/page1' })
-          ])
+            expect.not.objectContaining({ url: 'https://example.com/page1' }),
+          ]),
         },
         expect.any(Function)
       );
@@ -451,10 +460,10 @@ describe('Saved Tabs', () => {
   test('exportTabs should create a file with the correct content', () => {
     // Mock Blob constructor
     const originalBlob = global.Blob;
-    const mockBlob = jest.fn().mockImplementation((content) => {
+    const mockBlob = jest.fn().mockImplementation(content => {
       return {
         content,
-        type: 'text/plain'
+        type: 'text/plain',
       };
     });
     global.Blob = mockBlob as unknown as typeof Blob;
@@ -469,7 +478,7 @@ describe('Saved Tabs', () => {
     const mockAnchor = {
       href: '',
       download: '',
-      click: jest.fn()
+      click: jest.fn(),
     };
 
     // Use a safer way to mock createElement
@@ -504,14 +513,17 @@ describe('Saved Tabs', () => {
 
   test('importTabs should handle empty files', () => {
     // Create a mock FileReader implementation
-    let mockFileReaderInstance: { readAsText: jest.Mock; onload: null | ((event: ProgressEvent<FileReader>) => void) } | null = null;
+    let mockFileReaderInstance: {
+      readAsText: jest.Mock;
+      onload: null | ((event: ProgressEvent<FileReader>) => void);
+    } | null = null;
 
     const mockReadAsText = jest.fn().mockImplementation((_file: Blob) => {
       setTimeout(() => {
         const mockEvent = {
           target: {
-            result: '' // Empty file content
-          }
+            result: '', // Empty file content
+          },
         } as unknown as ProgressEvent<FileReader>;
 
         if (mockFileReaderInstance && mockFileReaderInstance.onload) {
@@ -524,7 +536,7 @@ describe('Saved Tabs', () => {
     const MockFileReader = jest.fn().mockImplementation(() => {
       mockFileReaderInstance = {
         readAsText: mockReadAsText,
-        onload: null
+        onload: null,
       };
       return mockFileReaderInstance;
     });
@@ -535,7 +547,7 @@ describe('Saved Tabs', () => {
     // Mock file input
     const fileInput = document.getElementById('importFile') as HTMLInputElement;
     Object.defineProperty(fileInput, 'files', {
-      value: [new File([''], 'empty.txt')]
+      value: [new File([''], 'empty.txt')],
     });
 
     // Mock chrome.storage.local.get and set
@@ -573,7 +585,10 @@ describe('Saved Tabs', () => {
 
   test('importTabs should preserve group structure from exported file', () => {
     // Create a mock FileReader implementation
-    let mockFileReaderInstance: { readAsText: jest.Mock; onload: null | ((event: ProgressEvent<FileReader>) => void) } | null = null;
+    let mockFileReaderInstance: {
+      readAsText: jest.Mock;
+      onload: null | ((event: ProgressEvent<FileReader>) => void);
+    } | null = null;
 
     // Create a mock file content that simulates an exported file with multiple groups
     const mockFileContent = `TabTab Exported Tabs
@@ -602,8 +617,8 @@ https://example.com/group2/tab2
       setTimeout(() => {
         const mockEvent = {
           target: {
-            result: mockFileContent
-          }
+            result: mockFileContent,
+          },
         } as unknown as ProgressEvent<FileReader>;
 
         if (mockFileReaderInstance && mockFileReaderInstance.onload) {
@@ -616,7 +631,7 @@ https://example.com/group2/tab2
     const MockFileReader = jest.fn().mockImplementation(() => {
       mockFileReaderInstance = {
         readAsText: mockReadAsText,
-        onload: null
+        onload: null,
       };
       return mockFileReaderInstance;
     });
@@ -627,7 +642,7 @@ https://example.com/group2/tab2
     // Mock file input
     const fileInput = document.getElementById('importFile') as HTMLInputElement;
     Object.defineProperty(fileInput, 'files', {
-      value: [new File([mockFileContent], 'export.txt')]
+      value: [new File([mockFileContent], 'export.txt')],
     });
 
     // Mock chrome.storage.local.get and set
@@ -663,7 +678,7 @@ https://example.com/group2/tab2
       expect(groupIds.size).toBe(2);
 
       // Group the tabs by groupId
-      const tabsByGroup: {[key: string]: SavedTab[]} = {};
+      const tabsByGroup: { [key: string]: SavedTab[] } = {};
       allTabs.forEach((tab: SavedTab) => {
         // Use a default group key if groupId is undefined
         const groupKey = tab.groupId || 'default';
@@ -685,7 +700,10 @@ https://example.com/group2/tab2
 
   test('importTabs should set favicons for imported tabs', () => {
     // Create a mock FileReader implementation
-    let mockFileReaderInstance: { readAsText: jest.Mock; onload: null | ((event: ProgressEvent<FileReader>) => void) } | null = null;
+    let mockFileReaderInstance: {
+      readAsText: jest.Mock;
+      onload: null | ((event: ProgressEvent<FileReader>) => void);
+    } | null = null;
 
     const mockFileContent = `TabTab Exported Tabs
 =====================
@@ -704,8 +722,8 @@ https://another.com/page
       setTimeout(() => {
         const mockEvent = {
           target: {
-            result: mockFileContent
-          }
+            result: mockFileContent,
+          },
         } as unknown as ProgressEvent<FileReader>;
 
         if (mockFileReaderInstance && mockFileReaderInstance.onload) {
@@ -718,7 +736,7 @@ https://another.com/page
     const MockFileReader = jest.fn().mockImplementation(() => {
       mockFileReaderInstance = {
         readAsText: mockReadAsText,
-        onload: null
+        onload: null,
       };
       return mockFileReaderInstance;
     });
@@ -729,7 +747,7 @@ https://another.com/page
     // Mock file input
     const fileInput = document.getElementById('importFile') as HTMLInputElement;
     Object.defineProperty(fileInput, 'files', {
-      value: [new File([mockFileContent], 'export.txt')]
+      value: [new File([mockFileContent], 'export.txt')],
     });
 
     // Mock chrome.storage.local.get and set
@@ -765,15 +783,18 @@ https://another.com/page
 
   test('importTabs should handle different URL formats', () => {
     // Create a mock FileReader implementation
-    let mockFileReaderInstance: { readAsText: jest.Mock; onload: null | ((event: ProgressEvent<FileReader>) => void) } | null = null;
+    let mockFileReaderInstance: {
+      readAsText: jest.Mock;
+      onload: null | ((event: ProgressEvent<FileReader>) => void);
+    } | null = null;
 
     const mockReadAsText = jest.fn().mockImplementation((_file: Blob) => {
       setTimeout(() => {
         // Create a mock event with different URL formats
         const mockEvent = {
           target: {
-            result: `Title 1\nhttp://example.org/1\n\nTitle 2\nhttps://example.org/2\n\nInvalid Entry\nnot-a-url\n\nTitle 3\nhttps://example.org/3`
-          }
+            result: `Title 1\nhttp://example.org/1\n\nTitle 2\nhttps://example.org/2\n\nInvalid Entry\nnot-a-url\n\nTitle 3\nhttps://example.org/3`,
+          },
         } as unknown as ProgressEvent<FileReader>;
 
         if (mockFileReaderInstance && mockFileReaderInstance.onload) {
@@ -786,7 +807,7 @@ https://another.com/page
     const MockFileReader = jest.fn().mockImplementation(() => {
       mockFileReaderInstance = {
         readAsText: mockReadAsText,
-        onload: null
+        onload: null,
       };
       return mockFileReaderInstance;
     });
@@ -797,7 +818,7 @@ https://another.com/page
     // Mock file input
     const fileInput = document.getElementById('importFile') as HTMLInputElement;
     Object.defineProperty(fileInput, 'files', {
-      value: [new File(['mock content'], 'import.txt')]
+      value: [new File(['mock content'], 'import.txt')],
     });
 
     // Mock chrome.storage.local.get and set
@@ -853,7 +874,10 @@ https://another.com/page
 
   test('importTabs should not create duplicates when importing tabs that already exist', () => {
     // Create a mock FileReader implementation
-    let mockFileReaderInstance: { readAsText: jest.Mock; onload: null | ((event: ProgressEvent<FileReader>) => void) } | null = null;
+    let mockFileReaderInstance: {
+      readAsText: jest.Mock;
+      onload: null | ((event: ProgressEvent<FileReader>) => void);
+    } | null = null;
 
     // Create a mock file content that simulates an exported file with tabs that already exist
     const mockFileContent = `TabTab Exported Tabs
@@ -878,8 +902,8 @@ https://another.com
       setTimeout(() => {
         const mockEvent = {
           target: {
-            result: mockFileContent
-          }
+            result: mockFileContent,
+          },
         } as unknown as ProgressEvent<FileReader>;
 
         if (mockFileReaderInstance && mockFileReaderInstance.onload) {
@@ -892,7 +916,7 @@ https://another.com
     const MockFileReader = jest.fn().mockImplementation(() => {
       mockFileReaderInstance = {
         readAsText: mockReadAsText,
-        onload: null
+        onload: null,
       };
       return mockFileReaderInstance;
     });
@@ -903,7 +927,7 @@ https://another.com
     // Mock file input
     const fileInput = document.getElementById('importFile') as HTMLInputElement;
     Object.defineProperty(fileInput, 'files', {
-      value: [new File([mockFileContent], 'export.txt')]
+      value: [new File([mockFileContent], 'export.txt')],
     });
 
     // Mock chrome.storage.local.get and set

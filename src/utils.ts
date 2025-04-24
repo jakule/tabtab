@@ -12,6 +12,6 @@ export function getHost(url: string): string {
     const urlObj = new URL(url);
     return urlObj.hostname;
   } catch {
-    return "other";
+    return 'other';
   }
 }

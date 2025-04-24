@@ -5,7 +5,7 @@ import '../test/test-setup.ts';
 
 // Mock the utils import
 jest.mock('../utils.ts', () => ({
-  getHost: jest.fn((url) => {
+  getHost: jest.fn(url => {
     try {
       return new URL(url).hostname;
     } catch {
@@ -21,15 +21,15 @@ const sampleTabs = [
     url: 'https://example.com/page1',
     favicon: 'https://example.com/favicon.ico',
     date: Date.now() - 86400000, // yesterday
-    groupId: 'group1'
+    groupId: 'group1',
   },
   {
     title: 'Example Page 2',
     url: 'https://example.com/page2',
     favicon: '',
     date: Date.now(),
-    groupId: 'group1'
-  }
+    groupId: 'group1',
+  },
 ];
 
 // Setup test HTML
@@ -69,7 +69,7 @@ describe('Additional Saved Tabs Tests', () => {
     // Mock file input with no files
     const fileInput = document.getElementById('importFile') as HTMLInputElement;
     Object.defineProperty(fileInput, 'files', {
-      value: [] // Empty files array
+      value: [], // Empty files array
     });
 
     // Mock chrome.storage.local.set
@@ -87,7 +87,7 @@ describe('Additional Saved Tabs Tests', () => {
     // Mock file input with null files
     const fileInput = document.getElementById('importFile') as HTMLInputElement;
     Object.defineProperty(fileInput, 'files', {
-      value: null // Null files
+      value: null, // Null files
     });
 
     // Mock chrome.storage.local.set
@@ -173,7 +173,7 @@ describe('Additional Saved Tabs Tests', () => {
       url: 'https://example.com/?param="<script>alert("xss")</script>',
       favicon: 'https://example.com/favicon.ico',
       date: Date.now(),
-      groupId: 'test-group-1'
+      groupId: 'test-group-1',
     };
 
     // Create a container for tabs
@@ -245,15 +245,18 @@ describe('Additional Saved Tabs Tests', () => {
 
   test('importTabs should handle malformed file content', () => {
     // Create a mock FileReader implementation
-    let mockFileReaderInstance: { readAsText: jest.Mock; onload: null | ((event: ProgressEvent<FileReader>) => void) } | null = null;
+    let mockFileReaderInstance: {
+      readAsText: jest.Mock;
+      onload: null | ((event: ProgressEvent<FileReader>) => void);
+    } | null = null;
 
     const mockReadAsText = jest.fn().mockImplementation((_file: Blob) => {
       setTimeout(() => {
         // Create a mock event with malformed content (no URL lines)
         const mockEvent = {
           target: {
-            result: 'Title 1\nTitle 2\nTitle 3'
-          }
+            result: 'Title 1\nTitle 2\nTitle 3',
+          },
         } as unknown as ProgressEvent<FileReader>;
 
         if (mockFileReaderInstance && mockFileReaderInstance.onload) {
@@ -266,7 +269,7 @@ describe('Additional Saved Tabs Tests', () => {
     const MockFileReader = jest.fn().mockImplementation(() => {
       mockFileReaderInstance = {
         readAsText: mockReadAsText,
-        onload: null
+        onload: null,
       };
       return mockFileReaderInstance;
     });
@@ -277,7 +280,7 @@ describe('Additional Saved Tabs Tests', () => {
     // Mock file input
     const fileInput = document.getElementById('importFile') as HTMLInputElement;
     Object.defineProperty(fileInput, 'files', {
-      value: [new File(['malformed content'], 'import.txt')]
+      value: [new File(['malformed content'], 'import.txt')],
     });
 
     // Mock chrome.storage.local.get and set

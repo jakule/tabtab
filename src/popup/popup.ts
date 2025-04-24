@@ -1,29 +1,29 @@
-import {getHost} from "../utils.ts";
+import { getHost } from '../utils.ts';
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
   // Group tabs button
-  document.getElementById('groupTabs')?.addEventListener('click', function() {
-    chrome.tabs.query({ currentWindow: true }, function(tabs) {
+  document.getElementById('groupTabs')?.addEventListener('click', function () {
+    chrome.tabs.query({ currentWindow: true }, function (tabs) {
       groupTabsByHost(tabs);
     });
   });
 
   // Ungroup tabs button
-  document.getElementById('ungroupTabs')?.addEventListener('click', function() {
-    chrome.tabs.query({ currentWindow: true }, function(tabs) {
+  document.getElementById('ungroupTabs')?.addEventListener('click', function () {
+    chrome.tabs.query({ currentWindow: true }, function (tabs) {
       ungroupAllTabs(tabs);
     });
   });
 
   // Save & Close Tabs button
-  document.getElementById('saveCloseTabs')?.addEventListener('click', function() {
-    chrome.tabs.query({ currentWindow: true }, function(tabs) {
+  document.getElementById('saveCloseTabs')?.addEventListener('click', function () {
+    chrome.tabs.query({ currentWindow: true }, function (tabs) {
       saveAndCloseTabs(tabs);
     });
   });
 
   // View Saved Tabs button
-  document.getElementById('viewSavedTabs')?.addEventListener('click', function() {
+  document.getElementById('viewSavedTabs')?.addEventListener('click', function () {
     chrome.tabs.create({ url: chrome.runtime.getURL('saved-tabs.html') });
   });
 });
@@ -63,8 +63,15 @@ function groupTabsByHost(tabs: chrome.tabs.Tab[]): void {
 
   // Generate some colors for the groups
   const colors: chrome.tabGroups.ColorEnum[] = [
-    'grey', 'blue', 'red', 'yellow', 'green',
-    'pink', 'purple', 'cyan', 'orange'
+    'grey',
+    'blue',
+    'red',
+    'yellow',
+    'green',
+    'pink',
+    'purple',
+    'cyan',
+    'orange',
   ];
 
   // Create tab groups based on hosts
@@ -75,16 +82,18 @@ function groupTabsByHost(tabs: chrome.tabs.Tab[]): void {
   Object.keys(hostGroups).forEach(host => {
     const tabIds = hostGroups[host];
     if (tabIds.length > 0) {
-      chrome.tabs.group({ tabIds }, function(groupId) {
+      chrome.tabs.group({ tabIds }, function (groupId) {
         chrome.tabGroups.update(groupId, {
           title: host,
-          color: colors[colorIndex % colors.length]
+          color: colors[colorIndex % colors.length],
         });
         colorIndex++;
         groupCount++;
         if (groupCount === Object.keys(hostGroups).length && statusElement) {
           statusElement.textContent = 'Tabs grouped successfully!';
-          setTimeout(() => { window.close(); }, 1500);
+          setTimeout(() => {
+            window.close();
+          }, 1500);
         }
       });
     }
@@ -99,10 +108,12 @@ function ungroupAllTabs(tabs: chrome.tabs.Tab[]): void {
   }
 
   const tabIds = tabs.map(tab => tab.id).filter((id): id is number => id !== undefined);
-  chrome.tabs.ungroup(tabIds, function() {
+  chrome.tabs.ungroup(tabIds, function () {
     if (statusElement) {
       statusElement.textContent = 'Tabs ungrouped!';
-      setTimeout(() => { window.close(); }, 1500);
+      setTimeout(() => {
+        window.close();
+      }, 1500);
     }
   });
 }
@@ -120,25 +131,27 @@ function saveAndCloseTabs(tabs: chrome.tabs.Tab[]): void {
   // Extract tab information - filter out chrome:// and extension pages
   const savedTabs: SavedTab[] = tabs
     .filter(tab => {
-      return tab.url &&
+      return (
+        tab.url &&
         !tab.url.startsWith('chrome://') &&
         !tab.url.startsWith('chrome-extension://') &&
-        !tab.url.includes('saved-tabs.html'); // Don't save our own page
+        !tab.url.includes('saved-tabs.html')
+      ); // Don't save our own page
     })
     .map(tab => ({
       title: tab.title || '',
       url: tab.url || '',
       favicon: tab.favIconUrl || '',
       date: Date.now(),
-      groupId: groupId
+      groupId: groupId,
     }));
 
   // Save tabs to storage
-  chrome.storage.local.get({ savedTabs: [] }, function(result) {
+  chrome.storage.local.get({ savedTabs: [] }, function (result) {
     const existingTabs: SavedTab[] = result.savedTabs;
     const allTabs = [...existingTabs, ...savedTabs];
 
-    chrome.storage.local.set({ savedTabs: allTabs }, function() {
+    chrome.storage.local.set({ savedTabs: allTabs }, function () {
       if (statusElement) {
         statusElement.textContent = 'Tabs saved! Closing...';
       }
@@ -146,9 +159,11 @@ function saveAndCloseTabs(tabs: chrome.tabs.Tab[]): void {
       // Close all tabs except the extension popup
       const tabIds = tabs
         .filter(tab => {
-          return tab.url &&
+          return (
+            tab.url &&
             !tab.url.startsWith('chrome-extension://') &&
-            !tab.url.includes('saved-tabs.html'); // Don't close our own page
+            !tab.url.includes('saved-tabs.html')
+          ); // Don't close our own page
         })
         .map(tab => tab.id)
         .filter((id): id is number => id !== undefined);
