@@ -508,26 +508,64 @@ function importTabs(event: Event): void {
 
       const importedTabs: SavedTab[] = [];
       const currentDate = Date.now();
-      // Generate a unique identifier for this group of imported tabs
-      const groupId = `import-${currentDate}`;
 
-      // Simple parsing logic - look for pairs of title and URL
-      for (let i = 0; i < lines.length - 1; i++) {
+      // Parse the file to identify groups and tabs
+      let currentGroupId = '';
+      let currentGroupDate = currentDate;
+
+      for (let i = 0; i < lines.length; i++) {
         const line = lines[i].trim();
-        const nextLine = lines[i + 1].trim();
 
-        // Check if the next line is a URL
-        if (nextLine.startsWith('http://') || nextLine.startsWith('https://')) {
-          importedTabs.push({
-            title: line,
-            url: nextLine,
-            favicon: '',
-            date: currentDate,
-            groupId: groupId
-          });
+        // Check if this line is a group header
+        if (line.startsWith('== ') && line.endsWith(' ==')) {
+          // Extract date from the group header if possible
+          const dateMatch = line.match(/== (.*?) \(\d+ tabs\) ==/);
+          if (dateMatch && dateMatch[1]) {
+            try {
+              // Try to parse the date, fallback to current date if it fails
+              const dateStr = dateMatch[1];
+              const parsedDate = new Date(dateStr);
+              currentGroupDate = isNaN(parsedDate.getTime()) ? currentDate : parsedDate.getTime();
+            } catch (e) {
+              currentGroupDate = currentDate;
+            }
+          }
 
-          // Skip the URL line
-          i += 1;
+          // Generate a unique group ID based on the date
+          currentGroupId = `import-group-${currentGroupDate}-${Math.floor(Math.random() * 10000)}`;
+          continue;
+        }
+
+        // If we haven't found a group yet, create a default one
+        if (!currentGroupId) {
+          currentGroupId = `import-group-${currentDate}-${Math.floor(Math.random() * 10000)}`;
+        }
+
+        // Check if this line could be a title with a URL on the next line
+        if (i < lines.length - 1) {
+          const nextLine = lines[i + 1].trim();
+
+          // Check if the next line is a URL
+          if (nextLine.startsWith('http://') || nextLine.startsWith('https://')) {
+            const title = line;
+            const url = nextLine;
+
+            // Generate favicon URL using Google's favicon service
+            const urlObj = new URL(url);
+            const domain = urlObj.hostname;
+            const favicon = `https://www.google.com/s2/favicons?domain=${domain}`;
+
+            importedTabs.push({
+              title: title,
+              url: url,
+              favicon: favicon,
+              date: currentGroupDate,
+              groupId: currentGroupId
+            });
+
+            // Skip the URL line
+            i += 1;
+          }
         }
       }
 
@@ -538,7 +576,7 @@ function importTabs(event: Event): void {
 
         chrome.storage.local.set({ savedTabs: allTabs }, function() {
           loadSavedTabs();
-          alert(`Successfully imported ${importedTabs.length} tabs`);
+          alert(`Successfully imported ${importedTabs.length} tabs in ${new Set(importedTabs.map(tab => tab.groupId)).size} groups`);
         });
       });
     };
