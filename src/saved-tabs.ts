@@ -572,11 +572,22 @@ function importTabs(event: Event): void {
       // Add imported tabs to storage
       chrome.storage.local.get({ savedTabs: [] }, function(result: { savedTabs: SavedTab[] }) {
         const savedTabs = result.savedTabs;
-        const allTabs = [...savedTabs, ...importedTabs];
+
+        // Create a map of existing tabs by URL for quick lookup
+        const existingTabsByUrl = new Map<string, SavedTab>();
+        savedTabs.forEach(tab => {
+          existingTabsByUrl.set(tab.url, tab);
+        });
+
+        // Filter out imported tabs that already exist in savedTabs
+        const newImportedTabs = importedTabs.filter(importedTab => !existingTabsByUrl.has(importedTab.url));
+
+        // Combine existing tabs with new imported tabs
+        const allTabs = [...savedTabs, ...newImportedTabs];
 
         chrome.storage.local.set({ savedTabs: allTabs }, function() {
           loadSavedTabs();
-          alert(`Successfully imported ${importedTabs.length} tabs in ${new Set(importedTabs.map(tab => tab.groupId)).size} groups`);
+          alert(`Successfully imported ${newImportedTabs.length} tabs in ${new Set(newImportedTabs.map(tab => tab.groupId)).size} groups`);
         });
       });
     };
