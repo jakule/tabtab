@@ -166,6 +166,61 @@ describe('Additional Saved Tabs Tests', () => {
     }, 0);
   });
 
+  test('renderTabs should properly escape HTML in tab titles and URLs', () => {
+    // Create a tab with special characters that could break HTML
+    const tabWithSpecialChars = {
+      title: 'Tab with "quotes" & <script>alert("xss")</script>',
+      url: 'https://example.com/?param="<script>alert("xss")</script>',
+      favicon: 'https://example.com/favicon.ico',
+      date: Date.now(),
+      groupId: 'test-group-1'
+    };
+
+    // Create a container for tabs
+    const tabsContainer = document.createElement('div');
+    tabsContainer.id = 'tabsContainer';
+    document.body.appendChild(tabsContainer);
+
+    // Reset modules to ensure a clean state
+    jest.isolateModules(() => {
+      // Mock chrome.storage.local.get to return our test tab
+      chrome.storage.local.get = jest.fn().mockImplementation((_, callback) => {
+        callback({ savedTabs: [tabWithSpecialChars] });
+      });
+
+      // Load the saved-tabs module which will trigger the DOMContentLoaded event handler
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require('../saved-tabs.ts');
+
+      // Simulate that the DOM has finished loading
+      document.dispatchEvent(new Event('DOMContentLoaded'));
+
+      // Find the rendered tab element
+      const tabElement = document.querySelector('.tab-item');
+      expect(tabElement).not.toBeNull();
+
+      if (tabElement) {
+        // Get the HTML content
+        const html = tabElement.innerHTML;
+
+        // Verify that the specific issue mentioned in the bug report is fixed
+        // The issue was that each row starts with '">
+        expect(html.trim().startsWith('">') || html.includes('\n">')).toBe(false);
+
+        // Verify that the content is visible in the rendered HTML
+        expect(html).toContain('Tab with');
+        expect(html).toContain('quotes');
+
+        // Check that the text content is properly escaped
+        const textContent = tabElement.textContent || '';
+        expect(textContent).toContain('Tab with "quotes" & <script>alert("xss")</script>');
+      }
+    });
+
+    // Clean up
+    tabsContainer.remove();
+  });
+
   test('openAllTabsInGroup should handle empty group', () => {
     // Mock chrome.tabs.create
     chrome.tabs.create = jest.fn();

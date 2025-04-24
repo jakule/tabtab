@@ -1,5 +1,15 @@
 import {getHost} from "./utils.ts";
 
+// Helper function to escape HTML attributes
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 // Define interfaces for our data structures
 interface SavedTab {
   title: string;
@@ -85,7 +95,7 @@ function updateStats(tabs: SavedTab[]): void {
       .slice(0, 10);
 
     sortedDomains.forEach(([domain, count]) => {
-      statsHtml += `<span class="domain-badge">${domain}: ${count}</span>`;
+      statsHtml += `<span class="domain-badge">${escapeHtml(domain)}: ${count}</span>`;
     });
 
     statsHtml += '</div>';
@@ -158,10 +168,10 @@ function renderTabs(tabs: SavedTab[]): void {
     const groupHeader = document.createElement('div');
     groupHeader.className = 'group-header';
     groupHeader.innerHTML = `
-      <span>${formattedDate} (${groupedTabs[groupKey].length} tabs)</span>
+      <span>${escapeHtml(formattedDate)} (${groupedTabs[groupKey].length} tabs)</span>
       <div class="button-group">
-        <button class="open-all" data-group="${groupKey}">Open All</button>
-        <button class="remove-all" data-group="${groupKey}">Remove All</button>
+        <button class="open-all" data-group="${escapeHtml(groupKey)}">Open All</button>
+        <button class="remove-all" data-group="${escapeHtml(groupKey)}">Remove All</button>
       </div>
     `;
 
@@ -178,21 +188,50 @@ function renderTabs(tabs: SavedTab[]): void {
     sortedTabs.forEach((tab) => {
       const tabElement = document.createElement('div');
       tabElement.className = 'tab-item';
-      tabElement.dataset.url = tab.url;
-      tabElement.dataset.title = tab.title;
+      tabElement.dataset.url = escapeHtml(tab.url);
+      tabElement.dataset.title = escapeHtml(tab.title || '');
 
       // Use a default favicon if none is available
       const defaultFavicon = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="8" fill="%23ddd"/></svg>';
       const favicon = tab.favicon || defaultFavicon;
 
-      tabElement.innerHTML = `
-        <img class="tab-favicon" src="${favicon}" alt="" onerror="this.src='${defaultFavicon}'">
-        <div class="tab-title" title="${tab.title || tab.url}">${tab.title || tab.url}</div>
-        <div class="tab-actions">
-          <button class="open-tab" data-url="${tab.url}">Open</button>
-          <button class="remove-tab" data-url="${tab.url}">Remove</button>
-        </div>
-      `;
+      // Create elements using DOM methods instead of innerHTML
+      // Favicon image
+      const faviconImg = document.createElement('img');
+      faviconImg.className = 'tab-favicon';
+      faviconImg.src = favicon;
+      faviconImg.alt = '';
+      faviconImg.onerror = function() { this.src = defaultFavicon; };
+
+      // Tab title
+      const titleDiv = document.createElement('div');
+      titleDiv.className = 'tab-title';
+      titleDiv.setAttribute('title', escapeHtml(tab.title || tab.url));
+      titleDiv.textContent = tab.title || tab.url;
+
+      // Tab actions
+      const actionsDiv = document.createElement('div');
+      actionsDiv.className = 'tab-actions';
+
+      // Open button
+      const openButton = document.createElement('button');
+      openButton.className = 'open-tab';
+      openButton.setAttribute('data-url', escapeHtml(tab.url));
+      openButton.textContent = 'Open';
+
+      // Remove button
+      const removeButton = document.createElement('button');
+      removeButton.className = 'remove-tab';
+      removeButton.setAttribute('data-url', escapeHtml(tab.url));
+      removeButton.textContent = 'Remove';
+
+      // Append all elements
+      actionsDiv.appendChild(openButton);
+      actionsDiv.appendChild(removeButton);
+
+      tabElement.appendChild(faviconImg);
+      tabElement.appendChild(titleDiv);
+      tabElement.appendChild(actionsDiv);
 
       tabsList.appendChild(tabElement);
     });
@@ -288,7 +327,7 @@ function filterTabs(query: string): void {
       if (!existingMessage) {
         tabsContainer.innerHTML += `
           <div class="no-tabs no-results">
-            <p>No tabs match your search: "${query}"</p>
+            <p>No tabs match your search: "${escapeHtml(query)}"</p>
             <button id="clearSearchFromMessage">Clear Search</button>
           </div>
         `;
