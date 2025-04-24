@@ -201,7 +201,7 @@ function renderTabs(tabs: SavedTab[]): void {
       faviconImg.className = 'tab-favicon';
       faviconImg.src = favicon;
       faviconImg.alt = '';
-      faviconImg.onerror = function() { this.src = defaultFavicon; };
+      faviconImg.onerror = function(): void { this.src = defaultFavicon; };
 
       // Tab title
       const titleDiv = document.createElement('div');
@@ -526,7 +526,7 @@ function importTabs(event: Event): void {
               const dateStr = dateMatch[1];
               const parsedDate = new Date(dateStr);
               currentGroupDate = isNaN(parsedDate.getTime()) ? currentDate : parsedDate.getTime();
-            } catch (e) {
+            } catch {
               currentGroupDate = currentDate;
             }
           }
