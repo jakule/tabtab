@@ -42,6 +42,19 @@ interface SavedTab {
   groupId: string; // unique identifier for the group
 }
 
+type GroupColor = NonNullable<chrome.tabGroups.UpdateProperties['color']>;
+type TabIdSelection = NonNullable<chrome.tabs.GroupOptions['tabIds']>;
+
+function toTabIdSelection(tabIds: number[]): TabIdSelection | null {
+  const [first, ...rest] = tabIds;
+
+  if (first === undefined) {
+    return null;
+  }
+
+  return rest.length === 0 ? first : [first, ...rest];
+}
+
 // Function to group tabs by host
 function groupTabsByHost(tabs: chrome.tabs.Tab[]): void {
   const statusElement = document.getElementById('status');
@@ -62,7 +75,7 @@ function groupTabsByHost(tabs: chrome.tabs.Tab[]): void {
   });
 
   // Generate some colors for the groups
-  const colors: chrome.tabGroups.ColorEnum[] = [
+  const colors: GroupColor[] = [
     'grey',
     'blue',
     'red',
@@ -81,22 +94,26 @@ function groupTabsByHost(tabs: chrome.tabs.Tab[]): void {
   // Process each host group
   Object.keys(hostGroups).forEach(host => {
     const tabIds = hostGroups[host];
-    if (tabIds.length > 0) {
-      chrome.tabs.group({ tabIds }, function (groupId) {
-        chrome.tabGroups.update(groupId, {
-          title: host,
-          color: colors[colorIndex % colors.length],
-        });
-        colorIndex++;
-        groupCount++;
-        if (groupCount === Object.keys(hostGroups).length && statusElement) {
-          statusElement.textContent = 'Tabs grouped successfully!';
-          setTimeout(() => {
-            window.close();
-          }, 1500);
-        }
-      });
+    const groupedTabIds = toTabIdSelection(tabIds);
+
+    if (!groupedTabIds) {
+      return;
     }
+
+    chrome.tabs.group({ tabIds: groupedTabIds }, function (groupId) {
+      chrome.tabGroups.update(groupId, {
+        title: host,
+        color: colors[colorIndex % colors.length],
+      });
+      colorIndex++;
+      groupCount++;
+      if (groupCount === Object.keys(hostGroups).length && statusElement) {
+        statusElement.textContent = 'Tabs grouped successfully!';
+        setTimeout(() => {
+          window.close();
+        }, 1500);
+      }
+    });
   });
 }
 
@@ -108,7 +125,19 @@ function ungroupAllTabs(tabs: chrome.tabs.Tab[]): void {
   }
 
   const tabIds = tabs.map(tab => tab.id).filter((id): id is number => id !== undefined);
-  chrome.tabs.ungroup(tabIds, function () {
+  const ungroupedTabIds = toTabIdSelection(tabIds);
+
+  if (!ungroupedTabIds) {
+    if (statusElement) {
+      statusElement.textContent = 'Tabs ungrouped!';
+      setTimeout(() => {
+        window.close();
+      }, 1500);
+    }
+    return;
+  }
+
+  chrome.tabs.ungroup(ungroupedTabIds, function () {
     if (statusElement) {
       statusElement.textContent = 'Tabs ungrouped!';
       setTimeout(() => {
@@ -147,8 +176,8 @@ function saveAndCloseTabs(tabs: chrome.tabs.Tab[]): void {
     }));
 
   // Save tabs to storage
-  chrome.storage.local.get({ savedTabs: [] }, function (result) {
-    const existingTabs: SavedTab[] = result.savedTabs;
+  chrome.storage.local.get<{ savedTabs: SavedTab[] }>({ savedTabs: [] }, function (result) {
+    const existingTabs = result.savedTabs;
     const allTabs = [...existingTabs, ...savedTabs];
 
     chrome.storage.local.set({ savedTabs: allTabs }, function () {
@@ -170,7 +199,9 @@ function saveAndCloseTabs(tabs: chrome.tabs.Tab[]): void {
 
       // Open the saved tabs page
       chrome.tabs.create({ url: chrome.runtime.getURL('saved-tabs.html') });
-      chrome.tabs.remove(tabIds);
+      if (tabIds.length > 0) {
+        chrome.tabs.remove(tabIds);
+      }
     });
   });
 }
