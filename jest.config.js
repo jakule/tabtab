@@ -16,6 +16,7 @@ export default {
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
   testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts'],
+  testPathIgnorePatterns: ['/node_modules/', '/e2e/'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   setupFiles: ['<rootDir>/src/test/test-setup.ts'],
   collectCoverage: true,
@@ -24,8 +25,9 @@ export default {
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
     '!src/**/*.d.ts',
+    '!src/e2e/**',
     '!src/test/**',
     '!src/**/__tests__/**',
-    '!**/node_modules/**'
+    '!**/node_modules/**',
   ],
 };

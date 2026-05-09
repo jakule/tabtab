@@ -33,6 +33,9 @@ pnpm build
 # Build for debugging (includes sourcemaps)
 pnpm build:debug
 
+# Build the extension with the e2e-only test worker
+pnpm build:e2e
+
 # Preview the build
 pnpm preview
 
@@ -44,6 +47,12 @@ pnpm lint:fix
 
 # Run tests
 pnpm test
+
+# Run Playwright end-to-end tests
+pnpm test:e2e
+
+# Run Playwright end-to-end tests in headed mode
+pnpm test:e2e:headed
 
 # Run tests in watch mode
 pnpm test:watch
@@ -71,7 +80,9 @@ pnpm test:watch
 
 ### Testing
 
-Tests are written using Jest and run in a jsdom environment. Chrome APIs are mocked in the test setup file to allow testing extension functionality without the Chrome runtime.
+Unit tests are written using Jest and run in a jsdom environment. Chrome APIs are mocked in the test setup file to allow testing extension functionality without the Chrome runtime.
+
+End-to-end tests use Playwright with the bundled Chromium browser and load the extension from `dist-e2e`. The Playwright suite also starts a small local fixture server so popup flows can exercise both `localhost` and `127.0.0.1` tabs without depending on external sites.
 
 To add new tests, create files with the `.test.ts` extension alongside the code you want to test.
 
@@ -80,6 +91,7 @@ To add new tests, create files with the `.test.ts` extension alongside the code 
 Running `pnpm build` will create a `dist` folder with the final extension files that can be loaded into Chrome as an unpacked extension for testing.
 
 To load the extension in Chrome:
+
 1. Go to chrome://extensions/
 2. Enable "Developer mode"
 3. Click "Load unpacked"
