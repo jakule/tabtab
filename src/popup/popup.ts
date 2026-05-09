@@ -1,5 +1,9 @@
 import { getHost } from '../utils.ts';
 
+const STALE_TAB_HOURS = 24;
+const HOUR_IN_MS = 60 * 60 * 1000;
+const POPUP_CLOSE_DELAY_MS = 1500;
+
 document.addEventListener('DOMContentLoaded', function () {
   // Group tabs button
   document.getElementById('groupTabs')?.addEventListener('click', function () {
@@ -19,6 +23,13 @@ document.addEventListener('DOMContentLoaded', function () {
   document.getElementById('saveCloseTabs')?.addEventListener('click', function () {
     chrome.tabs.query({ currentWindow: true }, function (tabs) {
       saveAndCloseTabs(tabs);
+    });
+  });
+
+  // Save & Close Stale Tabs button
+  document.getElementById('saveCloseStaleTabs')?.addEventListener('click', function () {
+    chrome.tabs.query({ currentWindow: true }, function (tabs) {
+      saveAndCloseStaleTabs(tabs);
     });
   });
 
@@ -55,12 +66,110 @@ function toTabIdSelection(tabIds: number[]): TabIdSelection | null {
   return rest.length === 0 ? first : [first, ...rest];
 }
 
+function updateStatus(message: string): void {
+  const statusElement = document.getElementById('status');
+
+  if (statusElement) {
+    statusElement.textContent = message;
+  }
+}
+
+function closePopupAfterDelay(): void {
+  setTimeout(() => {
+    window.close();
+  }, POPUP_CLOSE_DELAY_MS);
+}
+
+function finishPopupAction(message: string): void {
+  updateStatus(message);
+  closePopupAfterDelay();
+}
+
+function isSavedTabsPage(url: string): boolean {
+  return url.includes('saved-tabs.html');
+}
+
+function isSaveableTab(tab: chrome.tabs.Tab): tab is chrome.tabs.Tab & { url: string } {
+  return (
+    !!tab.url &&
+    !tab.url.startsWith('chrome://') &&
+    !tab.url.startsWith('chrome-extension://') &&
+    !isSavedTabsPage(tab.url)
+  );
+}
+
+function isClosableInFullSave(tab: chrome.tabs.Tab): tab is chrome.tabs.Tab & { url: string } {
+  return !!tab.url && !tab.url.startsWith('chrome-extension://') && !isSavedTabsPage(tab.url);
+}
+
+function createSavedTabs(tabs: chrome.tabs.Tab[]): SavedTab[] {
+  const savedAt = Date.now();
+  const groupId = savedAt.toString();
+
+  return tabs.filter(isSaveableTab).map(tab => ({
+    title: tab.title || '',
+    url: tab.url,
+    favicon: tab.favIconUrl || '',
+    date: savedAt,
+    groupId,
+  }));
+}
+
+function appendSavedTabs(savedTabs: SavedTab[], callback: () => void): void {
+  chrome.storage.local.get<{ savedTabs: SavedTab[] }>({ savedTabs: [] }, function (result) {
+    const existingTabs = result.savedTabs;
+    const allTabs = [...existingTabs, ...savedTabs];
+
+    chrome.storage.local.set({ savedTabs: allTabs }, callback);
+  });
+}
+
+function getTabIds(tabs: chrome.tabs.Tab[]): number[] {
+  return tabs.map(tab => tab.id).filter((id): id is number => id !== undefined);
+}
+
+function openSavedTabsPage(): void {
+  chrome.tabs.create({ url: chrome.runtime.getURL('saved-tabs.html') });
+}
+
+function removeTabs(tabIds: number[]): void {
+  if (tabIds.length > 0) {
+    chrome.tabs.remove(tabIds);
+  }
+}
+
+function completeSaveAndClose(
+  tabsToSave: chrome.tabs.Tab[],
+  tabIdsToClose: number[],
+  successMessage: string
+): void {
+  const savedTabs = createSavedTabs(tabsToSave);
+
+  appendSavedTabs(savedTabs, function () {
+    updateStatus(successMessage);
+    openSavedTabsPage();
+    removeTabs(tabIdsToClose);
+  });
+}
+
+function getStaleTabsToSaveAndClose(
+  tabs: chrome.tabs.Tab[],
+  cutoffTimestamp: number
+): Array<chrome.tabs.Tab & { url: string; lastAccessed: number }> {
+  return tabs.filter((tab): tab is chrome.tabs.Tab & { url: string; lastAccessed: number } => {
+    return (
+      isSaveableTab(tab) &&
+      !tab.pinned &&
+      typeof tab.lastAccessed === 'number' &&
+      tab.lastAccessed < cutoffTimestamp
+    );
+  });
+}
+
 // Function to group tabs by host
 function groupTabsByHost(tabs: chrome.tabs.Tab[]): void {
   const statusElement = document.getElementById('status');
-  if (statusElement) {
-    statusElement.textContent = 'Grouping tabs...';
-  }
+  updateStatus('Grouping tabs...');
 
   // Create a map of hosts to tab IDs
   const hostGroups: HostGroups = {};
@@ -108,10 +217,7 @@ function groupTabsByHost(tabs: chrome.tabs.Tab[]): void {
       colorIndex++;
       groupCount++;
       if (groupCount === Object.keys(hostGroups).length && statusElement) {
-        statusElement.textContent = 'Tabs grouped successfully!';
-        setTimeout(() => {
-          window.close();
-        }, 1500);
+        finishPopupAction('Tabs grouped successfully!');
       }
     });
   });
@@ -120,88 +226,46 @@ function groupTabsByHost(tabs: chrome.tabs.Tab[]): void {
 // Function to ungroup all tabs
 function ungroupAllTabs(tabs: chrome.tabs.Tab[]): void {
   const statusElement = document.getElementById('status');
-  if (statusElement) {
-    statusElement.textContent = 'Ungrouping tabs...';
-  }
+  updateStatus('Ungrouping tabs...');
 
   const tabIds = tabs.map(tab => tab.id).filter((id): id is number => id !== undefined);
   const ungroupedTabIds = toTabIdSelection(tabIds);
 
   if (!ungroupedTabIds) {
     if (statusElement) {
-      statusElement.textContent = 'Tabs ungrouped!';
-      setTimeout(() => {
-        window.close();
-      }, 1500);
+      finishPopupAction('Tabs ungrouped!');
     }
     return;
   }
 
   chrome.tabs.ungroup(ungroupedTabIds, function () {
     if (statusElement) {
-      statusElement.textContent = 'Tabs ungrouped!';
-      setTimeout(() => {
-        window.close();
-      }, 1500);
+      finishPopupAction('Tabs ungrouped!');
     }
   });
 }
 
 // Function to save and close all tabs
 function saveAndCloseTabs(tabs: chrome.tabs.Tab[]): void {
-  const statusElement = document.getElementById('status');
-  if (statusElement) {
-    statusElement.textContent = 'Saving and closing tabs...';
+  updateStatus('Saving and closing tabs...');
+
+  completeSaveAndClose(
+    tabs,
+    getTabIds(tabs.filter(isClosableInFullSave)),
+    'Tabs saved! Closing...'
+  );
+}
+
+function saveAndCloseStaleTabs(tabs: chrome.tabs.Tab[]): void {
+  updateStatus(`Saving and closing tabs older than ${STALE_TAB_HOURS} hours...`);
+
+  const cutoffTimestamp = Date.now() - STALE_TAB_HOURS * HOUR_IN_MS;
+  const staleTabs = getStaleTabsToSaveAndClose(tabs, cutoffTimestamp);
+
+  if (staleTabs.length === 0) {
+    finishPopupAction(`No tabs older than ${STALE_TAB_HOURS} hours to save and close.`);
+    return;
   }
 
-  // Generate a unique identifier for this group of tabs
-  const groupId = Date.now().toString();
-
-  // Extract tab information - filter out chrome:// and extension pages
-  const savedTabs: SavedTab[] = tabs
-    .filter(tab => {
-      return (
-        tab.url &&
-        !tab.url.startsWith('chrome://') &&
-        !tab.url.startsWith('chrome-extension://') &&
-        !tab.url.includes('saved-tabs.html')
-      ); // Don't save our own page
-    })
-    .map(tab => ({
-      title: tab.title || '',
-      url: tab.url || '',
-      favicon: tab.favIconUrl || '',
-      date: Date.now(),
-      groupId: groupId,
-    }));
-
-  // Save tabs to storage
-  chrome.storage.local.get<{ savedTabs: SavedTab[] }>({ savedTabs: [] }, function (result) {
-    const existingTabs = result.savedTabs;
-    const allTabs = [...existingTabs, ...savedTabs];
-
-    chrome.storage.local.set({ savedTabs: allTabs }, function () {
-      if (statusElement) {
-        statusElement.textContent = 'Tabs saved! Closing...';
-      }
-
-      // Close all tabs except the extension popup
-      const tabIds = tabs
-        .filter(tab => {
-          return (
-            tab.url &&
-            !tab.url.startsWith('chrome-extension://') &&
-            !tab.url.includes('saved-tabs.html')
-          ); // Don't close our own page
-        })
-        .map(tab => tab.id)
-        .filter((id): id is number => id !== undefined);
-
-      // Open the saved tabs page
-      chrome.tabs.create({ url: chrome.runtime.getURL('saved-tabs.html') });
-      if (tabIds.length > 0) {
-        chrome.tabs.remove(tabIds);
-      }
-    });
-  });
+  completeSaveAndClose(staleTabs, getTabIds(staleTabs), 'Stale tabs saved! Closing...');
 }
